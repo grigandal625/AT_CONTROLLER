@@ -1,6 +1,6 @@
 from at_queue.core.at_component import ATComponent
 from at_queue.utils.decorators import authorized_method
-from at_controller.core.fsm import TutoringProcess
+from at_controller.core.fsm import StateMachine
 from at_controller.core.pages import PAGES
 from at_controller.core.states import TRANSITIONS, STATES, get_triggering_transitions
 from at_queue.core.session import ConnectionParameters
@@ -17,7 +17,7 @@ class ATController(ATComponent):
     @authorized_method
     async def start_tutoring(self, auth_token: str = None) -> str:
         auth_token = auth_token or 'default'
-        process = TutoringProcess(self, auth_token=auth_token)
+        process = StateMachine(self, auth_token=auth_token)
         self.tutoring_processes[auth_token] = process
         
         await self.exec_external_method('ATRenderer', 'render_page', {
