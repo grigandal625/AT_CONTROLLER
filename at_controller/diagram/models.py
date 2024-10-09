@@ -95,6 +95,7 @@ class LinkTransitionModel(TransitionModel):
     label: str
     position: Optional[str] = Field(default='header')
     icon: Optional[str] = Field(default=None)
+    tags: Optional[List[str]] = Field(default=None)
 
     @field_validator('position')
     def validate_position(cls, v):
@@ -106,6 +107,7 @@ class FrameHandlerTransitionModel(TransitionModel):
     type: str = 'frame_handler'
     frame_id: str
     test: str
+    tags: Optional[List[str]] = Field(default=None)
 
 # Определяем модель для Transitions
 class Transitions(RootModel[Dict[str, Union[LinkTransitionModel, FrameHandlerTransitionModel]]]):
@@ -217,6 +219,5 @@ if __name__ == "__main__":
         # Валидация и создание экземпляра Diagram с сериализацией
         diagram = DiagramModel.from_dict(diagram_dict)
 
-        print(diagram.annotation)
     except ValidationError as e:
         print(e.json(indent=4))

@@ -172,6 +172,7 @@ class Transition:
     type: Literal['link', 'frame_handler']
     actions: List['Action']
     translation: Optional[str] = field(default=None)
+    tags: Optional[List[str]] = field(default=None)
     
     @property
     def annotation(self):
@@ -187,6 +188,7 @@ class LinkTransition(Transition):
     translation: Optional[str] = field(default=None)
     type: Literal['link'] = field(default='link')
     icon: Optional[str] = field(default=None)
+    tags: Optional[List[str]] = field(default=None)
 
 
 @dataclass(kw_only=True)
@@ -197,6 +199,7 @@ class FrameHandlerTransition(Transition):
     test: str
     type: Literal['frame_handler'] = field(default='frame_handler')
     translation: Optional[str] = field(default=None)
+    tags: Optional[List[str]] = field(default=None)
 
 
 @dataclass(kw_only=True)
