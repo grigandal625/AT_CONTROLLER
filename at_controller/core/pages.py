@@ -1,4 +1,4 @@
-from at_controller.core.states import STATES, get_triggering_transitions
+from at_controller.diagram.states import STATES, get_triggering_transitions
 
 
 def get_state_page(state: STATES, frame_id, frame_src):

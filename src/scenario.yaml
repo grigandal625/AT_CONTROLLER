@@ -1,0 +1,54 @@
+states:
+  main_page:
+    label: Работа 1
+    translation: Начало работы 1
+    initial: true
+    frame_rows:
+      kb_editor:
+        src: http://185.17.141.230:8787/token?token={auth_token}&frame_id=kb_editor
+        type: format_attributes
+  kb_creation:
+    label: Создание файла темпоральной БЗ
+    initial: false
+    frame_rows:
+      kb_editor:
+        src: http://185.17.141.230:8787/token?token={auth_token}&frame_id=kb_editor
+        type: format_attributes
+        redirect: /knowledge_bases/new
+  building_types:
+    label: Создание типов
+    initial: false
+    frame_rows:
+      kb_editor:
+        src: http://185.17.141.230:8787/token?token={auth_token}&frame_id=kb_editor
+        type: format_attributes
+        redirect: /knowledge_bases/{selected_kb}/types
+transitions:
+  create_kb:
+    type: link
+    source: main_page
+    dest: kb_creation
+    label: Построить фрагмент БЗ
+    actions:
+      - set_attribute:
+          attribute: test_status
+          value: kb_creation
+  build_types:
+    type: frame_handler
+    frame_id: kb_editor
+    test: /knowledge_bases/\d+
+    source: kb_creation
+    dest: building_types
+    actions:
+      - set_attribute:
+          attribute: test_status
+          value: building_types
+      - set_attribute:
+          attribute: selected_kb
+          value: 
+            frame_url:
+              frame_id: kb_editor
+              parse:
+                regexp: .*/knowledge_bases/(\d+)/?
+                group: 0
+
