@@ -72,6 +72,8 @@ class State:
     name: str
     label: str
     frame_rows: List[List[Frame]] 
+    control_label: Optional[str] = field(default=None)
+    control_subtitle: Optional[str] = field(default=None)
     translation: Optional[str] = field(default=None)
     initial: Optional[bool] = field(default=False)
     
@@ -80,8 +82,8 @@ class State:
         return self.name
     
     def get_page(self, state_machine: 'StateMachine'):
-        link_transitions: List[LinkTransition] = [t for t in state_machine.diagram.get_state_all_transitions(self) if t.type == 'link']
-        frame_handler_transitions: List[FrameHandlerTransition] = [t for t in state_machine.diagram.get_state_all_transitions(self) if t.type == 'frame_handler']
+        link_transitions: List[LinkTransition] = [t for t in state_machine.diagram.get_state_exit_transitions(self) if t.type == 'link']
+        frame_handler_transitions: List[FrameHandlerTransition] = [t for t in state_machine.diagram.get_state_exit_transitions(self) if t.type == 'frame_handler']
         
         header = {
             'label': self.label,
@@ -108,6 +110,21 @@ class State:
                 },
                 'framedata_field': 'frames'
             } for transition in link_transitions if transition.position == 'footer']
+        }
+
+        control = {
+            'label': self.control_label,
+            'subtitle': self.control_subtitle,
+            'links': [{
+                'type': 'component_method',
+                'label': transition.label,
+                'component': 'ATController',
+                'method': 'trigger_transition',
+                'kwargs': {
+                    'trigger': transition.name,
+                },
+                'framedata_field': 'frames'
+            } for transition in link_transitions if transition.position == 'control']
         }
         
         handlers = [{
@@ -140,6 +157,8 @@ class State:
         
         if footer['links']:
             result['footer'] = footer
+        if control['label'] or control['subtitle'] or control['links']:
+            result['control'] = control
         
         return result
         

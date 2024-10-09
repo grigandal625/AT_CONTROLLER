@@ -36,6 +36,8 @@ class FrameRowModel(RootModel[Dict[str, Union[str, FrameModel]]]):
 class StateModel(BaseModel):
     label: Optional[str]
     frame_rows: Union[FrameRowModel, List[FrameRowModel]]
+    control_label: Optional[str] = Field(default=None)
+    control_subtitle: Optional[str] = Field(default=None)
     translation: Optional[str] = Field(default=None)
     initial: Optional[bool] = Field(default=False)
     

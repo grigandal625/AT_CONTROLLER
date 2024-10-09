@@ -1,6 +1,8 @@
 states:
   main_page:
-    label: Работа 1
+    label: Учебное проектирование базовых компонентов динамических ИЭС
+    control_label: Приветственная страница
+    control_subtitle: Перейти к этапам технологии построения темпоральных баз знаний
     translation: Начало работы 1
     initial: true
     frame_rows:
@@ -8,7 +10,9 @@ states:
         src: http://185.17.141.230:8787/token?token={auth_token}&frame_id=kb_editor
         type: format_attributes
   kb_creation:
-    label: Создание файла темпоральной БЗ
+    label: Учебное проектирование базовых компонентов динамических ИЭС
+    control_label: Технология построения темпоральных баз знаний (БЗ)
+    control_subtitle: Создание файла БЗ
     initial: false
     frame_rows:
       kb_editor:
@@ -16,19 +20,82 @@ states:
         type: format_attributes
         redirect: /knowledge_bases/new
   building_types:
-    label: Создание типов
+    label: Учебное проектирование базовых компонентов динамических ИЭС
+    control_label: Технология построения темпоральных баз знаний (БЗ)
+    control_subtitle: Построение типов
     initial: false
     frame_rows:
       kb_editor:
         src: http://185.17.141.230:8787/token?token={auth_token}&frame_id=kb_editor
         type: format_attributes
         redirect: /knowledge_bases/{selected_kb}/types
+  building_basic_objects:
+    label: Учебное проектирование базовых компонентов динамических ИЭС
+    control_label: Технология построения темпоральных баз знаний (БЗ)
+    control_subtitle: Построение базовых объектов
+    initial: false
+    frame_rows:
+      kb_editor:
+        src: http://185.17.141.230:8787/token?token={auth_token}&frame_id=kb_editor
+        type: format_attributes
+        redirect: /knowledge_bases/{selected_kb}/objects/base_objects
+  building_intervals:
+    label: Учебное проектирование базовых компонентов динамических ИЭС
+    control_label: Технология построения темпоральных баз знаний (БЗ)
+    control_subtitle: Построение интервалов
+    initial: false
+    frame_rows:
+      kb_editor:
+        src: http://185.17.141.230:8787/token?token={auth_token}&frame_id=kb_editor
+        type: format_attributes
+        redirect: /knowledge_bases/{selected_kb}/objects/intervals
+  building_events:
+    label: Учебное проектирование базовых компонентов динамических ИЭС
+    control_label: Технология построения темпоральных баз знаний (БЗ)
+    control_subtitle: Построение событий
+    initial: false
+    frame_rows:
+      kb_editor:
+        src: http://185.17.141.230:8787/token?token={auth_token}&frame_id=kb_editor
+        type: format_attributes
+        redirect: /knowledge_bases/{selected_kb}/objects/events
+  building_rules:
+    label: Учебное проектирование базовых компонентов динамических ИЭС
+    control_label: Технология построения темпоральных баз знаний (БЗ)
+    control_subtitle: Построение базовых и темпоральных правил
+    initial: false
+    frame_rows:
+      kb_editor:
+        src: http://185.17.141.230:8787/token?token={auth_token}&frame_id=kb_editor
+        type: format_attributes
+        redirect: /knowledge_bases/{selected_kb}/rules
+  exporting_kb:
+    label: Учебное проектирование базовых компонентов динамических ИЭС
+    control_label: Технология построения темпоральных баз знаний (БЗ)
+    control_subtitle: Сохранение фрагмента темпоральной БЗ в формате расширенного ЯПЗ
+    initial: false
+    frame_rows:
+      kb_editor:
+        src: http://185.17.141.230:8787/token?token={auth_token}&frame_id=kb_editor
+        type: format_attributes
+        redirect: /knowledge_bases/{selected_kb}
+  kb_finished:
+    label: Учебное проектирование базовых компонентов динамических ИЭС
+    control_label: Технология построения темпоральных баз знаний (БЗ)
+    control_subtitle: Работа завершена
+    initial: false
+    frame_rows:
+      kb_editor:
+        src: http://185.17.141.230:8787/token?token={auth_token}&frame_id=kb_editor
+        type: format_attributes
+        redirect: /knowledge_bases/{selected_kb}
 transitions:
   create_kb:
     type: link
+    position: control
     source: main_page
     dest: kb_creation
-    label: Построить фрагмент БЗ
+    label: Приступить к работе 1 - Технология построения темпоральных баз знаний
     actions:
       - set_attribute:
           attribute: test_status
@@ -51,4 +118,154 @@ transitions:
               parse:
                 regexp: .*/knowledge_bases/(\d+)/?
                 group: 0
+  build_basic_objects:
+    type: link
+    position: control
+    label: Перейти к этапу построения базовых объектов
+    source: building_types
+    dest: building_basic_objects
+    actions:
+      - set_attribute:
+          attribute: test_status
+          value: building_basic_objects
+  back_build_types:
+    type: link
+    position: control
+    label: Вернуться к этапу построения типов
+    source: building_basic_objects
+    dest: building_types
+    actions:
+      - set_attribute:
+          attribute: test_status
+          value: building_basic_objects
+  build_intervals:
+    type: link
+    position: control
+    label: Перейти к этапу построения интервалов
+    source: building_basic_objects
+    dest: building_intervals
+    actions:
+      - set_attribute:
+          attribute: test_status
+          value: building_intervals
+  build_events:
+    type: link
+    position: control
+    label: Перейти к этапу построения событий
+    source: building_basic_objects
+    dest: building_events
+    actions:
+      - set_attribute:
+          attribute: test_status
+          value: building_events
+  exchange_build_events:
+    type: link
+    position: control
+    label: Переключиться на этап построения событий
+    source: building_intervals
+    dest: building_events
+    actions:
+      - set_attribute:
+          attribute: test_status
+          value: building_events
+  exchange_build_intervals:
+    type: link
+    position: control
+    label: Переключиться на этап построения интервалов
+    source: building_events
+    dest: building_intervals
+    actions:
+      - set_attribute:
+          attribute: test_status
+          value: building_intervals
+  back_intervals_objects:
+    type: link
+    position: control
+    label: Вернуться к этапу построения базовых объектов
+    source: building_intervals
+    dest: building_basic_objects
+    actions:
+      - set_attribute:
+          attribute: test_status
+          value: building_basic_objects
+  back_events_objects:
+    type: link
+    position: control
+    label: Вернуться к этапу построения базовых объектов
+    source: building_events
+    dest: building_basic_objects
+    actions:
+      - set_attribute:
+          attribute: test_status
+          value: building_basic_objects
+  intervals_build_rules:
+    type: link
+    position: control
+    label: Перейти к этапу построения темпоральных правил
+    source: building_intervals
+    dest: building_rules
+    actions:
+      - set_attribute:
+          attribute: test_status
+          value: building_rules
+  events_build_rules:
+    type: link
+    position: control
+    label: Перейти к этапу построения темпоральных правил
+    source: building_events
+    dest: building_rules
+    actions:
+      - set_attribute:
+          attribute: test_status
+          value: building_rules
+  back_build_events:
+    type: link
+    position: control
+    label: Вернуться к этапу построения событий
+    source: building_rules
+    dest: building_events
+    actions:
+      - set_attribute:
+          attribute: test_status
+          value: building_events
+  back_build_intervals:
+    type: link
+    position: control
+    label: Вернуться к этапу построения интервалов
+    source: building_rules
+    dest: building_intervals
+    actions:
+      - set_attribute:
+          attribute: test_status
+          value: building_intervals
+  export_kb:
+    type: link
+    position: control
+    label: Перейти к этапу сохранения фрагмента БЗ в форматах расширенного ЯПЗ
+    source: building_rules
+    dest: exporting_kb
+    actions:
+      - set_attribute:
+          attribute: test_status
+          value: building_intervals
+  back_build_rules:
+    type: link
+    position: control
+    label: Вернуться к этапу построения правил
+    source: exporting_kb
+    dest: building_rules
+    actions:
+      - set_attribute:
+          attribute: test_status
+          value: building_rules
+  finishing_kb:
+    type: link
+    position: control
+    label: Завершить практическую работу
+    source: exporting_kb
+    dest: kb_finished
+    actions:
+      - set_attribute:
+          attribute: test_status
+          value: building_intervals
 
