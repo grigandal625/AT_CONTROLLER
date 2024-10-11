@@ -1,5 +1,4 @@
 from transitions.extensions import GraphMachine
-from at_controller.diagram.states import STATES, TRANSITIONS
 from at_queue.core.at_component import ATComponent
 
 from typing import Dict, Any, TYPE_CHECKING

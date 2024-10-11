@@ -113,8 +113,8 @@ class State:
         }
 
         control = {
-            'label': self.control_label,
-            'subtitle': self.control_subtitle,
+            'label': self.control_label or "",
+            'subtitle': self.control_subtitle or "",
             'links': [{
                 'type': 'component_method',
                 'label': transition.label,
