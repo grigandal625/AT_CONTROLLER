@@ -93,10 +93,9 @@ states:
     control_subtitle: Работа завершена
     initial: false
     frame_rows:
-      kb_editor:
-        src: http://185.17.141.230:8787/token?token={auth_token}&frame_id=kb_editor
-        type: format_attributes
-        redirect: /knowledge_bases/{selected_kb}
+      kb_finished:
+        src: /docview?viewing=true&docs=%23+Работа+1+завершена
+        type: basic
 transitions:
   create_kb:
     type: link
