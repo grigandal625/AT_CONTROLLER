@@ -364,7 +364,10 @@ transitions:
         - sqrt:
             and:
               - in: [1, 2, 3, 4]
-              - sub: 1
+              - sub:
+                  argument: 1
+                  condition:
+                    gt: 3
     actions:
       - set_attribute:
           attribute: test_status
