@@ -3,7 +3,9 @@ repos:
     rev: v5.10.1  # Use the latest version
     hooks:
       - id: isort
+        exclude: '\.(?!py$).*$'
   - repo: https://github.com/psf/black
     rev: 23.1.0  # Use the latest version
     hooks:
       - id: black
+        exclude: '\.(?!py$).*$'
