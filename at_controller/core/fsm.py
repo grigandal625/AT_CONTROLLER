@@ -1,4 +1,6 @@
-from typing import TYPE_CHECKING, Any, Dict
+from typing import Any
+from typing import Dict
+from typing import TYPE_CHECKING
 
 from at_queue.core.at_component import ATComponent
 from transitions.extensions import GraphMachine
@@ -25,7 +27,8 @@ class StateMachine(object):
         self.attributes["auth_token"] = auth_token
         self.diagram = diagram
 
-        self.translated_machine = GraphMachine(model=self, **diagram.annotation)
+        self.translated_machine = GraphMachine(
+            model=self, **diagram.annotation)
 
 
 # Пример использования машины состояний и генерации диаграммы

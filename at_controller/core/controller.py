@@ -1,9 +1,7 @@
-from typing import Dict, Union
+from typing import Dict
+from typing import Union
 
 from at_queue.core.at_component import ATComponent
-
-# from at_controller.core.pages import PAGES
-# from at_controller.diagram.states import TRANSITIONS, STATES, get_triggering_transitions
 from at_queue.core.session import ConnectionParameters
 from at_queue.utils.decorators import authorized_method
 from yaml import safe_load
@@ -11,6 +9,8 @@ from yaml import safe_load
 from at_controller.core.fsm import StateMachine
 from at_controller.diagram.models import DiagramModel
 from at_controller.diagram.state import EventTransition
+# from at_controller.core.pages import PAGES
+# from at_controller.diagram.states import TRANSITIONS, STATES, get_triggering_transitions
 
 
 class ATController(ATComponent):
@@ -30,7 +30,8 @@ class ATController(ATComponent):
     async def start_process(self, auth_token: str = None) -> str:
         auth_token = auth_token or "default"
 
-        process = StateMachine(self, auth_token=auth_token, diagram=self.scenario)
+        process = StateMachine(
+            self, auth_token=auth_token, diagram=self.scenario)
         self.state_machines[auth_token] = process
 
         initial_state = process.diagram.get_state(process.state)

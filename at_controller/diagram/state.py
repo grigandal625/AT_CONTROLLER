@@ -1,9 +1,20 @@
 import math
 import operator
 import re
-from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Dict, List, Literal, Optional, TypedDict, Union
-from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
+from dataclasses import dataclass
+from dataclasses import field
+from typing import Any
+from typing import Dict
+from typing import List
+from typing import Literal
+from typing import Optional
+from typing import TYPE_CHECKING
+from typing import TypedDict
+from typing import Union
+from urllib.parse import parse_qs
+from urllib.parse import urlencode
+from urllib.parse import urlparse
+from urllib.parse import urlunparse
 
 import numpy as np
 
@@ -201,9 +212,11 @@ class Transition:
     def annotation(self):
         return {
             "trigger": self.name,
-            "source": self.source.annotation
-            if isinstance(self.source, State)
-            else self.source,
+            "source": (
+                self.source.annotation
+                if isinstance(self.source, State)
+                else self.source
+            ),
             "dest": self.dest.annotation if isinstance(self.dest, State) else self.dest,
         }
 
@@ -213,7 +226,8 @@ class LinkTransition(Transition):
     name: str
     label: str
     actions: List["Action"]
-    position: Optional[Literal["header", "footer", "control"]] = field(default="header")
+    position: Optional[Literal["header", "footer",
+                               "control"]] = field(default="header")
     translation: Optional[str] = field(default=None)
     type: Literal["link"] = field(default="link")
     icon: Optional[str] = field(default=None)
@@ -239,9 +253,12 @@ class Condition:
         raise NotImplementedError
 
 
+EquatationType = Literal["eq", "ne", "gt", "gte", "lt", "lte"]
+
+
 @dataclass(kw_only=True)
 class EquatationCondition(Condition):
-    type: Literal["eq", "ne", "gt", "gte", "lt", "lte"]
+    type: EquatationType
     value: Any
 
     def check(self, checking_value: Any, state_machine: "StateMachine"):
@@ -259,9 +276,12 @@ class EquatationCondition(Condition):
             return checking_value <= self.value
 
 
+InclusionType = Literal["in", "not_in", "includes", "not_includes"]
+
+
 @dataclass(kw_only=True)
 class InclusionCondition(Condition):
-    type: Literal["in", "not_in", "includes", "not_includes"]
+    type: InclusionType
     value: Any
 
     def check(self, checking_value: Any, state_machine: "StateMachine"):
@@ -585,16 +605,19 @@ class Function:
             if isinstance(v, Function):
                 value[k] = v.call(state_machine, frames)
             elif isinstance(v, dict):
-                value[k] = self._search_and_call_functions(v, state_machine, frames)
+                value[k] = self._search_and_call_functions(
+                    v, state_machine, frames)
             elif isinstance(v, list):
                 value[k] = [
-                    self._search_and_call_functions(item, state_machine, frames)
+                    self._search_and_call_functions(
+                        item, state_machine, frames)
                     for item in v
                 ]
         return value
 
     def call(self, state_machine: "StateMachine", frames: Dict[str, str]):
-        kwargs = self._search_and_call_functions(self.kwargs, state_machine, frames)
+        kwargs = self._search_and_call_functions(
+            self.kwargs, state_machine, frames)
         return self.exec(state_machine, frames, **kwargs)
 
     def exec(self, state_machine: "StateMachine", frames: Dict[str, str], **kwargs):

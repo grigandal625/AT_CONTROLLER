@@ -1,34 +1,39 @@
-from typing import Any, Dict, List, Literal, Optional, Union
+from typing import Any
+from typing import Dict
+from typing import List
+from typing import Literal
+from typing import Optional
+from typing import Union
 
-from pydantic import (
-    BaseModel,
-    Field,
-    RootModel,
-    ValidationError,
-    field_validator,
-    model_validator,
-)
+from pydantic import BaseModel
+from pydantic import Field
+from pydantic import field_validator
+from pydantic import model_validator
+from pydantic import RootModel
+from pydantic import ValidationError
 from yaml import safe_load
 
-from at_controller.diagram.state import (
-    AndCondition,
-    AuthToken,
-    BinaryOperationCondition,
-    Diagram,
-    EquatationCondition,
-    EventTransition,
-    Frame,
-    FrameHandlerTransition,
-    FrameUrl,
-    GetAttribute,
-    InclusionCondition,
-    LinkTransition,
-    NonArgOperationCondition,
-    NotCondition,
-    OrCondition,
-    SetAttributeAction,
-    State,
-)
+from at_controller.diagram.state import AndCondition
+from at_controller.diagram.state import AuthToken
+from at_controller.diagram.state import BinaryOperationCondition
+from at_controller.diagram.state import BinaryType
+from at_controller.diagram.state import Diagram
+from at_controller.diagram.state import EquatationCondition
+from at_controller.diagram.state import EquatationType
+from at_controller.diagram.state import EventTransition
+from at_controller.diagram.state import Frame
+from at_controller.diagram.state import FrameHandlerTransition
+from at_controller.diagram.state import FrameUrl
+from at_controller.diagram.state import GetAttribute
+from at_controller.diagram.state import InclusionCondition
+from at_controller.diagram.state import InclusionType
+from at_controller.diagram.state import LinkTransition
+from at_controller.diagram.state import NonArgOperationCondition
+from at_controller.diagram.state import NonArgType
+from at_controller.diagram.state import NotCondition
+from at_controller.diagram.state import OrCondition
+from at_controller.diagram.state import SetAttributeAction
+from at_controller.diagram.state import State
 
 
 class FrameModel(BaseModel):
@@ -127,11 +132,14 @@ class SetAttributeActionModel(BaseModel):
     def _build_functions(action_body: Dict):
         body = SetAttributeBody(**action_body)
         if isinstance(body.value, GetAttributeModel):
-            action_body["value"] = GetAttributeModel.from_dict(body.value.model_dump())
+            action_body["value"] = GetAttributeModel.from_dict(
+                body.value.model_dump())
         elif isinstance(body.value, FrameUrlModel):
-            action_body["value"] = FrameUrlModel.from_dict(body.value.model_dump())
+            action_body["value"] = FrameUrlModel.from_dict(
+                body.value.model_dump())
         elif isinstance(body.value, AuthTokenModel):
-            action_body["value"] = AuthTokenModel.from_dict(body.value.model_dump())
+            action_body["value"] = AuthTokenModel.from_dict(
+                body.value.model_dump())
         return action_body
 
 
@@ -152,7 +160,8 @@ class LinkTransitionModel(TransitionModel):
     @field_validator("position")
     def validate_position(cls, v):
         if v not in {"header", "footer", "control", None}:
-            raise ValueError("position must be 'header', 'footer', 'control', or None")
+            raise ValueError(
+                "position must be 'header', 'footer', 'control', or None")
         return v
 
 
@@ -164,7 +173,7 @@ class FrameHandlerTransitionModel(TransitionModel):
 
 
 class EquatationConditionModel(BaseModel):
-    type: Literal["eq", "ne", "gt", "gte", "lt", "lte"]
+    type: EquatationType
     value: Any
 
     def to_internal(self) -> "EquatationCondition":
@@ -172,7 +181,7 @@ class EquatationConditionModel(BaseModel):
 
 
 class InclusionConditionModel(BaseModel):
-    type: Literal["in", "not_in", "includes", "not_includes"]
+    type: InclusionType
     value: Union[List[Any], Dict[Any, Any]]
 
     def to_internal(self) -> "InclusionCondition":
@@ -189,6 +198,8 @@ class AndConditionModel(BaseModel):
             "AndConditionModel",
             "OrConditionModel",
             "NotConditionModel",
+            "NonArgOperationConditionModel",
+            "BinaryOperationConditionModel",
         ]
     ]
 
@@ -207,6 +218,8 @@ class OrConditionModel(BaseModel):
             "AndConditionModel",
             "OrConditionModel",
             "NotConditionModel",
+            "NonArgOperationConditionModel",
+            "BinaryOperationConditionModel",
         ]
     ]
 
@@ -232,30 +245,7 @@ class NotConditionModel(BaseModel):
 
 # Операционные условия
 class NonArgOperationConditionModel(BaseModel):
-    type: Literal[
-        "len",
-        "sqrt",
-        "abs",
-        "ceil",
-        "floor",
-        "round",
-        "sign",
-        "log",
-        "exp",
-        "sin",
-        "cos",
-        "tan",
-        "asin",
-        "acos",
-        "atan",
-        "neg",
-        "transpose",
-        "det",
-        "inv",
-        "norm",
-        "trace",
-        "is_null",
-    ]
+    type: NonArgType
     condition: Optional[
         Union[
             "EquatationConditionModel",
@@ -263,14 +253,16 @@ class NonArgOperationConditionModel(BaseModel):
             "AndConditionModel",
             "OrConditionModel",
             "NotConditionModel",
+            "NonArgOperationConditionModel",
+            "BinaryOperationConditionModel",
         ]
     ] = None
 
     @model_validator(mode="before")
     def parse_conditions(cls, values):
-        if values.get("condition"):
+        if isinstance(values, dict):
             values["condition"] = EventTransitionModel.parse_condition(
-                values["condition"]
+                values.get("condition", {})
             )
         return values
 
@@ -282,26 +274,7 @@ class NonArgOperationConditionModel(BaseModel):
 
 
 class BinaryOperationConditionModel(BaseModel):
-    type: Literal[
-        "add",
-        "sub",
-        "mul",
-        "div",
-        "mod",
-        "pow",
-        "logical_and",
-        "logical_or",
-        "xor",
-        "max",
-        "min",
-        "equal",
-        "not_equal",
-        "less_than",
-        "less_or_equal",
-        "greater_than",
-        "greater_or_equal",
-        "state_attr",
-    ]
+    type: BinaryType
     argument: Any
     condition: Optional[
         Union[
@@ -310,8 +283,18 @@ class BinaryOperationConditionModel(BaseModel):
             "AndConditionModel",
             "OrConditionModel",
             "NotConditionModel",
+            "NonArgOperationConditionModel",
+            "BinaryOperationConditionModel",
         ]
     ] = None
+
+    @model_validator(mode="before")
+    def parse_conditions(cls, values):
+        if isinstance(values, dict):
+            values["condition"] = EventTransitionModel.parse_condition(
+                values.get("condition", {})
+            )
+        return values
 
     def to_internal(self) -> "BinaryOperationCondition":
         return BinaryOperationCondition(
@@ -344,15 +327,15 @@ class EventTransitionModel(BaseModel):
 
     @model_validator(mode="before")
     def parse_conditions(cls, values):
-        condition_data = values.get("trigger_condition")
-        if condition_data:
-            values["trigger_condition"] = cls.parse_condition(condition_data)
+        if isinstance(values, dict):
+            condition_data = values.get("trigger_condition")
+            condition_model = cls.parse_condition(condition_data)
+            if condition_data:
+                values["trigger_condition"] = condition_model
         return values
 
     @classmethod
-    def parse_condition(
-        cls, data: Dict[str, Any]
-    ) -> Union[
+    def parse_condition(cls, data: Dict[str, Any]) -> Union[
         EquatationConditionModel,
         InclusionConditionModel,
         AndConditionModel,
@@ -361,41 +344,66 @@ class EventTransitionModel(BaseModel):
         NonArgOperationConditionModel,
         BinaryOperationConditionModel,
     ]:
-        cond_type = next(iter(data))  # Извлекаем первый ключ
+        if isinstance(data, BaseModel):
+            return data
+        if data is None:
+            return None
+        if isinstance(data, dict):
+            if not len(data.keys()):
+                return None
+            cond_type = next(iter(data))  # Извлекаем первый ключ
+        elif isinstance(data, str):
+            cond_type = data
+            data = {}
 
         # Проверка на операционные условия (NonArg и BinaryOperation)
-        if cond_type in NonArgOperationConditionModel:
+        if cond_type in NonArgType.__args__:
+            cond_body = data.get(cond_type)
+            if isinstance(cond_body, dict):
+                condition = cond_body.get("condition")
+                if condition is None:
+                    condition = cond_body or {}
+            else:
+                condition = {}
             return NonArgOperationConditionModel(
-                type=cond_type, condition=cls.parse_condition(data.get("condition", {}))
+                type=cond_type, condition=cls.parse_condition(condition)
             )
-        elif type in type(BinaryOperationConditionModel.type):
+        elif cond_type in BinaryType.__args__:
+            cond_body = data.get(cond_type)
+            if isinstance(cond_body, dict):
+                argument = cond_body.get("argument")
+                condition = cond_body.get("condition")
+                if argument is None:
+                    argument = data[cond_type]
+                    condition = {}
+            else:
+                argument = data[cond_type]
+                condition = {}
             return BinaryOperationConditionModel(
-                type=type,
-                argument=data[type],
-                condition=cls.parse_condition(data.get("condition", {})),
+                type=cond_type,
+                argument=argument,
+                condition=cls.parse_condition(condition),
             )
 
         # Логические условия (and, or, not)
         if "and" in data:
+            conditions = [cls.parse_condition(cond) for cond in data["and"]]
             return AndConditionModel(
                 type="and",
-                conditions=[cls.parse_condition(cond) for cond in data["and"]],
+                conditions=conditions,
             )
         elif "or" in data:
-            return OrConditionModel(
-                type="or", conditions=[cls.parse_condition(cond) for cond in data["or"]]
-            )
+            conditions = [cls.parse_condition(cond) for cond in data["or"]]
+            return OrConditionModel(type="or", conditions=conditions)
         elif "not" in data:
-            return NotConditionModel(
-                type="not", condition=cls.parse_condition(data["not"])
-            )
+            condition = cls.parse_condition(data["not"])
+            return NotConditionModel(type="not", condition=condition)
 
-        # Условия включения (in, not_in, includes, not_includes)
-        if any(k in data for k in ["in", "not_in", "includes", "not_includes"]):
-            return InclusionConditionModel(type=type, value=data[type])
+        elif cond_type in InclusionType.__args__:
+            return InclusionConditionModel(type=cond_type, value=data[cond_type])
 
-        # Обычные уравнительные условия (eq, ne, gt, gte, lt, lte)
-        return EquatationConditionModel(type=type, value=data[type])
+        elif cond_type in EquatationType.__args__:
+            return EquatationConditionModel(type=cond_type, value=data[cond_type])
 
 
 class Transitions(
@@ -412,12 +420,18 @@ class Transitions(
     def from_dict(cls, transitions_dict: Dict[str, Any]):
         transitions = cls(transitions_dict)
         return [
-            LinkTransition(name=name, **cls._build_actions(transition))
-            if isinstance(transition, LinkTransitionModel) and transition.type == "link"
-            else FrameHandlerTransition(name=name, **cls._build_actions(transition))
-            if isinstance(transition, FrameHandlerTransitionModel)
-            and transition.type == "frame_handler"
-            else EventTransition(name=name, **cls._build_actions(transition))
+            (
+                LinkTransition(name=name, **cls._build_actions(transition))
+                if isinstance(transition, LinkTransitionModel)
+                and transition.type == "link"
+                else (
+                    FrameHandlerTransition(
+                        name=name, **cls._build_actions(transition))
+                    if isinstance(transition, FrameHandlerTransitionModel)
+                    and transition.type == "frame_handler"
+                    else EventTransition(name=name, **cls._build_actions(transition))
+                )
+            )
             for name, transition in transitions.root.items()
         ]
 
@@ -429,9 +443,9 @@ class Transitions(
     ):
         transition_body = transition.model_dump()
         if isinstance(transition, EventTransitionModel):
-            transition_body[
-                "trigger_condition"
-            ] = transition.trigger_condition.to_internal()
+            transition_body["trigger_condition"] = (
+                transition.trigger_condition.to_internal()
+            )
         return {
             **transition_body,
             "actions": [
@@ -520,7 +534,8 @@ class FrameUrlModel(BaseModel):
             return {
                 "kwargs": FrameUrlParseBody(
                     frame_id=function_dict["frame_url"]["frame_id"],
-                    parse=ParseBodyModel(**function_dict["frame_url"]["parse"]),
+                    parse=ParseBodyModel(
+                        **function_dict["frame_url"]["parse"]),
                 ).model_dump()
             }
 

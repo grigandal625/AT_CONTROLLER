@@ -1,5 +1,5 @@
 states:
-  
+
   # состояния для технологии построения темпоральных БЗ
   kb_start:
     label: Средства поддержки практических занятий по учебному проектированию базовых компонентов динамических ИЭС
@@ -138,7 +138,7 @@ states:
         src: /docview?viewing=true&docs=%23%23%23+Подсказки+и+объяснения%0A%0A%23%23%23%23+Этап+создания+типов%0A%0AВ+ЯПЗ+поддерживаются+три+основных+типа%3A%0A-+Символьный+тип+-+тип%2C+для+которого+указывается+множество+возможных+символьных+значений%0A-+Числовой+тип+-+тип%2C+для+которого+указывается+числовой+промежуток%2C+в+рамках+которого+могут+быть+значения%0A-+Нечеткий+тип+-+тип%2C+определяющий+лингвистическую+переменную+и+ее+значения%0A%0AПримеры+типов%3A%0A%0A*Символьный*%09%0A%60%60%60%0AТИП+Характер_Кашля%0AСИМВОЛ%0A"Отсутствует"%0A"Cухой"%0A"Влажный+продукативный"%0A"Влажный+непродуктивный"%0AКОММЕНТАРИЙ+Тип+для+характера+кашля%0A%60%60%60%0A%0A*Числовой*%0A%60%60%60%09%0AТИП+Процедур_в_месяц%0AЧИСЛО%0AОТ+0%0AДО+8%0AКОММЕНТАРИЙ+Тип+для+частоты+назначенных+посещений+процедур+в+месяц%0A%60%60%60%0A%0A*Нечеткий*%09%0A%60%60%60%0AТИП+Температура%0AНЕЧЕТКИЙ%0A3%0A"Высокая"+34+42+4+%3D%7B34%7C0%3B+36%7C0%3B+38%7C1%3B+42%7C1%7D%0A"Нормальная"+34+42+8+%3D%7B34%7C0%3B+35%7C0%3B+35.7%7C0.5%3B+36.2%7C0.9%3B+36.6%7C1%3B+37%7C0.4%3B+37.4%7C0%3B+42%7C0%7D%0A"Низкая"+34+42+4+%3D%7B34%7C1%3B+36%7C1%3B+37%7C0%3B+42%7C0%7D%0AКОММЕНТАРИЙ+Тип+для+характера+температуры%0A%60%60%60
         type: basic
         span: 4
-  
+
 transitions:
 
   # переходы для технологии построения темпоральной БЗ
@@ -164,7 +164,7 @@ transitions:
           value: building_types
       - set_attribute:
           attribute: selected_kb
-          value: 
+          value:
             frame_url:
               frame_id: kb_editor
               parse:
@@ -332,7 +332,7 @@ transitions:
       - set_attribute:
           attribute: test_status
           value: sm_creation
-  
+
   build_resource_types:
     type: frame_handler
     frame_id: sm_editor
@@ -345,7 +345,7 @@ transitions:
           value: building_types
       - set_attribute:
           attribute: selected_sm
-          value: 
+          value:
             frame_url:
               frame_id: sm_editor
               parse:
@@ -357,10 +357,14 @@ transitions:
     dest: building_types
     handler_component: ATTutotingSkills
     handler_method: handle_create_type
-    trigger_condition: 
+    trigger_condition:
       and:
         - in: [1, 2, 3, 4]
-        - gt: 2 
+        - gt: 2
+        - sqrt:
+            and:
+              - in: [1, 2, 3, 4]
+              - sub: 1
     actions:
       - set_attribute:
           attribute: test_status
