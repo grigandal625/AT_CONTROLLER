@@ -1,4 +1,3 @@
-from typing import Dict
 from typing import Union
 
 from at_queue.core.at_component import ATComponent
@@ -81,7 +80,7 @@ class ATController(ATComponent):
         self,
         event: str,
         data: Union[int, float, bool, str, dict, list],
-        frames: Dict[str, str] = None,
+        frames: dict = None,
         auth_token: str = None,
     ):
         auth_token = auth_token or "default"

@@ -353,6 +353,7 @@ transitions:
                 group: 0
   on_type_created:
     type: event
+    event: kbTypes/create
     source: building_types
     dest: building_types
     handler_component: ATTutotingSkills
