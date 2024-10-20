@@ -4,9 +4,10 @@ from at_controller.core.fsm import StateMachine
 # from at_controller.core.pages import PAGES
 # from at_controller.diagram.states import TRANSITIONS, STATES, get_triggering_transitions
 from at_queue.core.session import ConnectionParameters
-from typing import Dict
+from typing import Dict, Union
 from yaml import safe_load
 from at_controller.diagram.models import DiagramModel
+from at_controller.diagram.state import EventTransition
 
 class ATController(ATComponent):
     
@@ -44,7 +45,7 @@ class ATController(ATComponent):
         process: StateMachine = self.state_machines.get(auth_token)
         
         if not process:
-            return 'No tutoring process found for this auth token'
+            return 'No process found for this auth token'
         
         state = process.diagram.get_state(process.state)
         transition = process.diagram.get_transition(trigger)
@@ -62,4 +63,40 @@ class ATController(ATComponent):
             }, auth_token=auth_token)
         
         return process.state
+    
+    
+    @authorized_method
+    async def handle_event(self, event: str, data: Union[int, float, bool, str, dict, list], frames: Dict[str, str] = None, auth_token: str = None):
+        auth_token = auth_token or 'default'
+        process: StateMachine = self.state_machines.get(auth_token)
+        
+        if not process:
+            return 'No process found for this auth token'
+        
+        state = process.diagram.get_state(process.state)
+        
+        checking_data = data
+        
+        for transition in process.diagram.get_state_exit_transitions(state):
+            
+            if not transition or not isinstance(transition, EventTransition) or transition.event != event:
+                continue
+            
+            if transition.handler_component and transition.handler_method:
+                
+                if not await self.check_external_registered(transition.handler_component):
+                    raise ReferenceError('Handler component not registered')
+                
+                checking_data = await self.exec_external_method(transition.handler_component, transition.handler_method, {
+                    'event': event,
+                    'data': data
+                }, auth_token=auth_token)
+                
+            if transition.trigger_condition:
+                if transition.trigger_condition.check(checking_data):
+                    return await self.trigger_transition(transition.name, frames or {}, auth_token=auth_token)
+            else:
+                return await self.trigger_transition(transition.name, frames or {}, auth_token=auth_token)
+            
+        return data
     
