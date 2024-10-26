@@ -533,9 +533,6 @@ class EventTransition(Transition):
     name: str
     event: Optional[str] = field(default=None)
 
-    handler_component: Optional[str] = field(default=None)
-    handler_method: Optional[str] = field(default=None)
-
     trigger_condition: Optional[
         Union[
             EquatationCondition,
@@ -694,9 +691,17 @@ class AuthToken(Function):
 
 
 @dataclass(kw_only=True)
+class Event:
+    name: str
+    handler_component: Optional[str] = field(default=None)
+    handler_method: Optional[str] = field(default=None)
+
+
+@dataclass(kw_only=True)
 class Diagram:
     states: List[State]
     transitions: List[Transition]
+    events: List[Event]
 
     @property
     def annotation(self):
@@ -708,16 +713,16 @@ class Diagram:
             ),
         }
 
-    def get_state(self, name: str):
+    def get_state(self, name: str) -> Union[State, None]:
         return next((state for state in self.states if state.name == name), None)
 
-    def get_transition(self, name: str):
+    def get_transition(self, name: str) -> Union[Transition, None]:
         return next(
             (transition for transition in self.transitions if transition.name == name),
             None,
         )
 
-    def get_state_exit_transitions(self, state: Union[str, State]):
+    def get_state_exit_transitions(self, state: Union[str, State]) -> List[Transition]:
         if isinstance(state, State):
             state = state.annotation
 
@@ -727,7 +732,7 @@ class Diagram:
             if transition.annotation["source"] == state
         ]
 
-    def get_state_enter_transitions(self, state: Union[str, State]):
+    def get_state_enter_transitions(self, state: Union[str, State]) -> List[Transition]:
         if isinstance(state, State):
             state = state.annotation
 
@@ -737,7 +742,10 @@ class Diagram:
             if transition.annotation["dest"] == state
         ]
 
-    def get_state_all_transitions(self, state: Union[str, State]):
+    def get_state_all_transitions(self, state: Union[str, State]) -> List[Transition]:
         return self.get_state_exit_transitions(
             state
         ) + self.get_state_enter_transitions(state)
+
+    def get_event(self, name: str) -> Union[Event, None]:
+        return next((event for event in self.events if event.name == name), None)

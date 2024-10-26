@@ -372,4 +372,11 @@ transitions:
     actions:
       - set_attribute:
           attribute: test_status
-          value: building_types
+          value:
+events:
+  kbTypes/create:
+    handler_component: ATTutotingSkills
+    handler_method: handle_kb_type_created
+  kbTypes/update:
+    handler_component: ATTutotingSkills
+    handler_method: handle_kb_type_updated

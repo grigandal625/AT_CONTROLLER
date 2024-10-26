@@ -90,8 +90,23 @@ class ATController(ATComponent):
             return "No process found for this auth token"
 
         state = process.diagram.get_state(process.state)
+        diagram_event = process.diagram.get_event(event)
 
         checking_data = data
+
+        if diagram_event:
+            if diagram_event.handler_component and diagram_event.handler_method:
+                if not await self.check_external_registered(
+                    diagram_event.handler_component
+                ):
+                    raise ReferenceError("Handler component not registered")
+
+                checking_data = await self.exec_external_method(
+                    diagram_event.handler_component,
+                    diagram_event.handler_method,
+                    {"event": event, "data": data},
+                    auth_token=auth_token,
+                )
 
         for transition in process.diagram.get_state_exit_transitions(state):
             if (
@@ -100,19 +115,6 @@ class ATController(ATComponent):
                 or transition.event != event
             ):
                 continue
-
-            if transition.handler_component and transition.handler_method:
-                if not await self.check_external_registered(
-                    transition.handler_component
-                ):
-                    raise ReferenceError("Handler component not registered")
-
-                checking_data = await self.exec_external_method(
-                    transition.handler_component,
-                    transition.handler_method,
-                    {"event": event, "data": data},
-                    auth_token=auth_token,
-                )
 
             if transition.trigger_condition:
                 if transition.trigger_condition.check(checking_data):

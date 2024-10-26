@@ -20,6 +20,7 @@ from at_controller.diagram.state import BinaryType
 from at_controller.diagram.state import Diagram
 from at_controller.diagram.state import EquatationCondition
 from at_controller.diagram.state import EquatationType
+from at_controller.diagram.state import Event
 from at_controller.diagram.state import EventTransition
 from at_controller.diagram.state import Frame
 from at_controller.diagram.state import FrameHandlerTransition
@@ -101,6 +102,7 @@ class States(RootModel[Dict[str, StateModel]]):
 class SetAttributeBody(BaseModel):
     attribute: str
     value: Union[
+        None,
         str,
         int,
         float,
@@ -310,8 +312,6 @@ class EventTransitionModel(BaseModel):
     type: Literal["event"] = "event"
     source: str
     dest: str
-    handler_component: Optional[str]
-    handler_method: Optional[str]
     trigger_condition: Optional[
         Union[
             EquatationConditionModel,
@@ -570,6 +570,30 @@ class AuthTokenModel(BaseModel):
         return AuthToken(name="auth_token", kwargs={})
 
 
+class EventModel(BaseModel):
+    handler_component: Optional[str] = Field(default=None)
+    handler_method: Optional[str] = Field(default=None)
+
+
+class Events(RootModel[
+    Dict[
+        str,
+        EventModel
+    ]
+]):
+    @classmethod
+    def from_dict(cls, events_dict: Dict[str, Any]):
+        events = cls(events_dict)
+        return [
+            Event(
+                name=name,
+                handler_component=event.handler_component,
+                handler_method=event.handler_method,
+            )
+            for name, event in events.root.items()
+        ]
+
+
 class DiagramModel(BaseModel):
     states: States
     transitions: Transitions
@@ -578,7 +602,8 @@ class DiagramModel(BaseModel):
     def from_dict(cls, diagram_dict: Dict[str, Any]):
         states = States.from_dict(diagram_dict["states"])
         transitions = Transitions.from_dict(diagram_dict["transitions"])
-        return Diagram(states=states, transitions=transitions)
+        events = Events.from_dict(diagram_dict.get("events", {}))
+        return Diagram(states=states, transitions=transitions, events=events)
 
 
 # Пример использования
