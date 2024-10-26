@@ -695,6 +695,7 @@ class Event:
     name: str
     handler_component: Optional[str] = field(default=None)
     handler_method: Optional[str] = field(default=None)
+    raise_on_missing: Optional[bool] = field(default=False)
 
 
 @dataclass(kw_only=True)

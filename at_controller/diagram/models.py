@@ -573,6 +573,7 @@ class AuthTokenModel(BaseModel):
 class EventModel(BaseModel):
     handler_component: Optional[str] = Field(default=None)
     handler_method: Optional[str] = Field(default=None)
+    raise_on_missing: Optional[bool] = Field(default=False)
 
 
 class Events(RootModel[
