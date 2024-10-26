@@ -110,8 +110,10 @@ class ATController(ATComponent):
                         auth_token=auth_token,
                     )
                 else:
-                    logger.warning(f"For event {event} handler component {
-                                   diagram_event.handler_component} is not registered")
+                    logger.warning(
+                        f"For event {event} handler component "
+                        + f"{diagram_event.handler_component} is not registered"
+                    )
 
         for transition in process.diagram.get_state_exit_transitions(state):
             if (
