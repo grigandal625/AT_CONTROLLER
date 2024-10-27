@@ -356,23 +356,20 @@ transitions:
     event: kbTypes/create
     source: building_types
     dest: building_types
-    handler_component: ATTutotingSkills
-    handler_method: handle_create_type
     trigger_condition:
       and:
-        - in: [1, 2, 3, 4]
-        - gt: 2
-        - sqrt:
-            and:
-              - in: [1, 2, 3, 4]
-              - sub:
-                  argument: 1
-                  condition:
-                    gt: 3
+        - has_attr: result
+        - get_attr:
+            argument: result
+            condition:
+              has_attr: item
     actions:
       - set_attribute:
           attribute: test_status
           value:
+      - show_message:
+          message: "Управляющая программа зарегистрировала событи создания типа"
+
 events:
   kbTypes/create:
     handler_component: ATTutotingSkills

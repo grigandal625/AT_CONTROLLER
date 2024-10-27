@@ -34,6 +34,7 @@ from at_controller.diagram.state import NonArgType
 from at_controller.diagram.state import NotCondition
 from at_controller.diagram.state import OrCondition
 from at_controller.diagram.state import SetAttributeAction
+from at_controller.diagram.state import ShowMessageAction
 from at_controller.diagram.state import State
 
 
@@ -118,6 +119,24 @@ class SetAttributeBody(BaseModel):
     )  # Параметры действий, которые могут быть сложными
 
 
+class ShowMessageBody(BaseModel):
+    message: str
+    title: Optional[str] = Field(default="")
+    modal: Optional[bool] = Field(default=True)
+    message_type: Optional[str] = Field(default="info")
+
+
+class ShowMessageActionModel(BaseModel):
+    show_message: ShowMessageBody
+
+    @classmethod
+    def from_dict(cls, action_dict: Dict[str, Any]):
+        return ShowMessageAction(
+            type="show_message",
+            **ShowMessageBody(**action_dict["show_message"]).model_dump()
+        )
+
+
 class SetAttributeActionModel(BaseModel):
     set_attribute: SetAttributeBody
 
@@ -148,7 +167,8 @@ class SetAttributeActionModel(BaseModel):
 class TransitionModel(BaseModel):
     source: str
     dest: str
-    actions: Optional[List[SetAttributeActionModel]] = Field(default=None)
+    actions: Optional[List[Union[SetAttributeActionModel,
+                                 ShowMessageActionModel]]] = Field(default=None)
     translation: Optional[str] = Field(default=None)
 
 
@@ -449,7 +469,8 @@ class Transitions(
         return {
             **transition_body,
             "actions": [
-                SetAttributeActionModel.from_dict(action_body)
+                SetAttributeActionModel.from_dict(action_body) if next(
+                    iter(action_body.keys())) == "set_attribute" else ShowMessageActionModel.from_dict(action_body)
                 for action_body in transition_body.get("actions", [])
             ],
         }

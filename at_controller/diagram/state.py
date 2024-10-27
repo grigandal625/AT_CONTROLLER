@@ -1,3 +1,4 @@
+import asyncio
 import math
 import operator
 import re
@@ -479,6 +480,8 @@ BinaryType = Literal[
     "greater_than",
     "greater_or_equal",
     "state_attr",
+    "get_attr",
+    "has_attr"
 ]
 
 
@@ -524,6 +527,10 @@ class BinaryOperationCondition(OperationCondition):
             return checking_value >= self.argument
         elif self.type == "state_attr":
             return state_machine.attributes.get(self.argument)
+        elif self.type == "get_attr":
+            return checking_value[self.argument]
+        elif self.type == "has_attr":
+            return self.argument in checking_value
         else:
             raise ValueError(f"Unsupported operation type: {self.type}")
 
@@ -558,16 +565,13 @@ class Action:
     type: str
     next: Optional[List["Action"]] = field(default=None)
 
-    def perform(self, state_machine: "StateMachine", frames: Dict[str, str]):
-        result = self.action(state_machine, frames)
-
+    async def perform(self, state_machine: "StateMachine", frames: Dict[str, str]):
+        result = await self.action(state_machine, frames)
         if self.next:
-            for next_action in self.next:
-                next_action.perform()
-
+            await asyncio.gather(*[next_action.perform() for next_action in self.next])
         return result
 
-    def action(self, state_machine: "StateMachine", frames: Dict[str, str]):
+    async def action(self, state_machine: "StateMachine", frames: Dict[str, str]):
         pass
 
 
@@ -577,7 +581,7 @@ class SetAttributeAction(Action):
     attribute: str
     value: Union[str, int, float, bool, list, dict, "Function"]
 
-    def action(self, state_machine: "StateMachine", frames: Dict[str, str]):
+    async def action(self, state_machine: "StateMachine", frames: Dict[str, str]):
         value = self.value
         if isinstance(value, Function):
             value = value.exec(state_machine, frames, **value.kwargs)
@@ -586,6 +590,28 @@ class SetAttributeAction(Action):
         result = {}
         result[self.attribute] = value
         return result
+
+
+@dataclass(kw_only=True)
+class ShowMessageAction(Action):
+    type: Literal["show_message"] = field(default="show_message")
+    message: str
+    title: Optional[str] = field(default="")
+    modal: Optional[bool] = field(default=True)
+    message_type: Optional[str] = field(default="info")
+
+    async def action(self, state_machine: "StateMachine", frames: Dict[str, str]):
+        return await state_machine.component.exec_external_method(
+            'ATRenderer',
+            'show_message',
+            {
+                "message": self.message,
+                "modal": self.modal,
+                "message_type": self.message_type,
+                "title": self.title,
+            },
+            auth_token=state_machine.auth_token
+        )
 
 
 @dataclass(kw_only=True)

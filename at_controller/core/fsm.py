@@ -20,7 +20,7 @@ class StateMachine(object):
     attributes: Dict[str, Any]
     diagram: "Diagram"
 
-    def __init__(self, component, auth_token, diagram: "Diagram"):
+    def __init__(self, component: 'ATComponent', auth_token: 'str', diagram: "Diagram"):
         self.component = component
         self.auth_token = auth_token
         self.attributes = SafeDict()

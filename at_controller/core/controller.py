@@ -1,3 +1,4 @@
+import asyncio
 from logging import getLogger
 from typing import Union
 
@@ -64,8 +65,7 @@ class ATController(ATComponent):
             t.name for t in process.diagram.get_state_exit_transitions(state)
         ]:
             if transition.actions:
-                for action in transition.actions:
-                    action.perform(process, frames)
+                await asyncio.gather(*[action.perform(process, frames) for action in transition.actions])
 
             process.trigger(transition.name)
 
@@ -125,7 +125,7 @@ class ATController(ATComponent):
                 continue
 
             if transition.trigger_condition:
-                if transition.trigger_condition.check(checking_data):
+                if transition.trigger_condition.check(checking_data, process):
                     return await self.trigger_transition(
                         transition.name, frames or {}, auth_token=auth_token
                     )
