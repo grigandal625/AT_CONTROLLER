@@ -250,7 +250,7 @@ class FrameHandlerTransition(Transition):
 class Condition:
     type: str
 
-    def check(self, checking_value: Any, state_machine: "StateMachine"):
+    def check(self, checking_value: Any, state_machine: "StateMachine", *args, **kwargs):
         raise NotImplementedError
 
 
@@ -262,7 +262,7 @@ class EquatationCondition(Condition):
     type: EquatationType
     value: Any
 
-    def check(self, checking_value: Any, state_machine: "StateMachine"):
+    def check(self, checking_value: Any, state_machine: "StateMachine", *args, **kwargs):
         if self.type == "eq":
             return checking_value == self.value
         elif self.type == "ne":
@@ -285,7 +285,7 @@ class InclusionCondition(Condition):
     type: InclusionType
     value: Any
 
-    def check(self, checking_value: Any, state_machine: "StateMachine"):
+    def check(self, checking_value: Any, state_machine: "StateMachine", *args, **kwargs):
         if self.type == "in":
             return checking_value in self.value
         elif self.type == "not_in":
@@ -311,7 +311,7 @@ class AndCondition(Condition):
         ]
     ]
 
-    def check(self, checking_value: Any, state_machine: "StateMachine"):
+    def check(self, checking_value: Any, state_machine: "StateMachine", *args, **kwargs):
         return all(
             condition.check(checking_value, state_machine)
             for condition in self.arguments
@@ -333,7 +333,7 @@ class OrCondition(Condition):
         ]
     ]
 
-    def check(self, checking_value: Any, state_machine: "StateMachine"):
+    def check(self, checking_value: Any, state_machine: "StateMachine",  *args, **kwargs):
         return any(
             condition.check(checking_value, state_machine)
             for condition in self.arguments
@@ -353,7 +353,7 @@ class NotCondition(Condition):
         "BinaryOperationCondition",
     ]
 
-    def check(self, checking_value: Any, state_machine: "StateMachine"):
+    def check(self, checking_value: Any, state_machine: "StateMachine", *args, **kwargs):
         return not self.condition.check(checking_value, state_machine)
 
 
@@ -372,11 +372,11 @@ class OperationCondition(Condition):
         ]
     ] = field(default=None)
 
-    def perform_operation(self, checking_value, state_machine: "StateMachine"):
+    def perform_operation(self, checking_value, state_machine: "StateMachine", *args, **kwargs):
         pass
 
-    def check(self, checking_value: Any, state_machine: "StateMachine"):
-        v = self.perform_operation(checking_value, state_machine)
+    def check(self, checking_value: Any, state_machine: "StateMachine", *args, **kwargs):
+        v = self.perform_operation(checking_value, state_machine, *args, **kwargs)
         if self.condition is not None:
             return self.condition.check(v, state_machine)
         return v
@@ -579,7 +579,7 @@ class Action:
 class SetAttributeAction(Action):
     type: Literal["set_attribute"] = field(default="set_attribute")
     attribute: str
-    value: Union[str, int, float, bool, list, dict, "Function"]
+    value: Union[str, int, float, bool, "Function", list, dict]
 
     async def action(self, state_machine: "StateMachine", frames: Dict[str, str]):
         value = self.value
@@ -643,7 +643,7 @@ class Function:
             self.kwargs, state_machine, frames)
         return self.exec(state_machine, frames, **kwargs)
 
-    def exec(self, state_machine: "StateMachine", frames: Dict[str, str], **kwargs):
+    def exec(self, state_machine: "StateMachine", frames: Dict[str, str], event_data: Any = None, **kwargs):
         pass
 
 
@@ -656,7 +656,7 @@ class GetAttribute(Function):
     name: Literal["get_attribute"] = field(default="get_attribute")
     kwargs: AttributeArg
 
-    def exec(self, state_machine: "StateMachine", frames: Dict[str, str], **kwargs):
+    def exec(self, state_machine: "StateMachine", frames: Dict[str, str], event_data: Any = None, **kwargs):
         return state_machine.attributes.get(kwargs["attribute"])
 
 
@@ -681,7 +681,7 @@ class FrameUrl(Function):
     name: Literal["frame_url"]
     kwargs: FrameUrlArg
 
-    def exec(self, state_machine: "StateMachine", frames: Dict[str, str], **kwargs):
+    def exec(self, state_machine: "StateMachine", frames: Dict[str, str], event_data: Any = None, **kwargs):
         frame_id = kwargs["frame_id"]
         url = frames.get(frame_id)
 
@@ -712,8 +712,107 @@ class AuthToken(Function):
     name: Literal["auth_token"]
     kwargs: Dict
 
-    def exec(self, state_machine: "StateMachine", frames: Dict[str, str], **kwargs):
+    def exec(self, state_machine: "StateMachine", frames: Dict[str, str], event_data: Any = None, **kwargs):
         return state_machine.auth_token
+
+
+class EventDataKwargs(TypedDict):
+    key_path: Optional[List[str]]
+
+
+@dataclass(kw_only=True)
+class EventData(Function):
+    name: Literal["event_data"]
+    kwargs: EventDataKwargs
+
+    def exec(self, state_machine: "StateMachine", frames: Dict[str, str], event_data: Any = None, **kwargs):
+        if self.kwargs and self.kwargs.get('key_path'):
+            return self.extract(event_data, self.kwargs["key_path"])
+        return event_data
+
+    @staticmethod
+    def extract(data: Union[Dict, List], key_path: List[str]) -> Any:
+        if not len(key_path):
+            return data
+        if isinstance(data, dict):
+            return EventData.extract(data.get(key_path[0], {}), key_path=key_path[1:])
+        if isinstance(data, list) and len(data) > key_path[0]:
+            return data[key_path[0]]
+        return None
+
+
+class LogicalFunctionKwargs(TypedDict):
+    items: List[Union[str, int, float, bool, "Function", list, dict]]
+
+
+@dataclass(kw_only=True)
+class AndFunction(Function):
+    name: Literal['and']
+    kwargs: LogicalFunctionKwargs
+
+    @property
+    def items(self):
+        return self.kwargs["items"]
+
+    def exec(self, state_machine: "StateMachine", frames: Dict[str, str], event_data: Any = None, **kwargs):
+        return all(*[f.exec(state_machine, frames, event_data, **kwargs) if isinstance(f, Function) else f for f in self.items])
+
+
+@dataclass(kw_only=True)
+class OrFunction(Function):
+    name: Literal['or']
+    kwargs: LogicalFunctionKwargs
+
+    @property
+    def items(self):
+        return self.kwargs["items"]
+
+    def exec(self, state_machine: "StateMachine", frames: Dict[str, str], event_data: Any = None, **kwargs):
+        return any(*[f.exec(state_machine, frames, event_data, **kwargs) if isinstance(f, Function) else f for f in self.items])
+
+
+class UnaryFunctionKwargs(TypedDict):
+    value: Union[str, int, float, bool, "Function", list, dict]
+
+
+@dataclass(kw_only=True)
+class UnaryFunction(Function):
+    name: NonArgType
+    kwargs: UnaryFunctionKwargs
+
+    @property
+    def value(self):
+        return self.kwargs["value"]
+
+    def exec(self, state_machine: "StateMachine", frames: Dict[str, str], event_data: Any = None, **kwargs):
+        checking_value = self.value.exec(state_machine, frames, event_data, **kwargs) if isinstance(self.value, Function) else self.value
+        cond = NonArgOperationCondition(type=self.name)
+        return cond.perform_operation(checking_value=checking_value, state_machine=state_machine)
+
+
+class BinaryFunctionKwargs(TypedDict):
+    left_value: Union[str, int, float, bool, "Function", list, dict]
+    right_value: Union[str, int, float, bool, "Function", list, dict]
+
+
+@dataclass(kw_only=True)
+class BinaryFunction(Function):
+    name: BinaryType
+    kwargs: BinaryFunctionKwargs
+
+    @property
+    def left_value(self):
+        return self.kwargs["left_value"]
+
+    @property
+    def right_value(self):
+        return self.kwargs["right_value"]
+
+    def exec(self, state_machine: "StateMachine", frames: Dict[str, str], event_data: Any = None, **kwargs):
+        left_value = self.left_value.exec(state_machine, frames, event_data, **kwargs) if isinstance(self.left_value, Function) else self.left_value
+        right_value = self.right_value.exec(state_machine, frames, event_data, **kwargs) if isinstance(self.right_value, Function) else self.right_value
+        cond = BinaryOperationCondition(type=self.name, argument=right_value)
+        return cond.perform_operation(checking_value=left_value, state_machine=state_machine)
 
 
 @dataclass(kw_only=True)

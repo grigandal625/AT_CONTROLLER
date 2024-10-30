@@ -374,6 +374,9 @@ events:
   kbTypes/create:
     handler_component: ATTutotingSkills
     handler_method: handle_kb_type_created
+    actions:
+      - set_attribute:
+
   kbTypes/update:
     handler_component: ATTutotingSkills
     handler_method: handle_kb_type_updated

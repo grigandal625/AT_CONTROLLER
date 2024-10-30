@@ -14,13 +14,16 @@ from pydantic import ValidationError
 from yaml import safe_load
 
 from at_controller.diagram.state import AndCondition
+from at_controller.diagram.state import AndFunction
 from at_controller.diagram.state import AuthToken
+from at_controller.diagram.state import BinaryFunction
 from at_controller.diagram.state import BinaryOperationCondition
 from at_controller.diagram.state import BinaryType
 from at_controller.diagram.state import Diagram
 from at_controller.diagram.state import EquatationCondition
 from at_controller.diagram.state import EquatationType
 from at_controller.diagram.state import Event
+from at_controller.diagram.state import EventData
 from at_controller.diagram.state import EventTransition
 from at_controller.diagram.state import Frame
 from at_controller.diagram.state import FrameHandlerTransition
@@ -33,9 +36,11 @@ from at_controller.diagram.state import NonArgOperationCondition
 from at_controller.diagram.state import NonArgType
 from at_controller.diagram.state import NotCondition
 from at_controller.diagram.state import OrCondition
+from at_controller.diagram.state import OrFunction
 from at_controller.diagram.state import SetAttributeAction
 from at_controller.diagram.state import ShowMessageAction
 from at_controller.diagram.state import State
+from at_controller.diagram.state import UnaryFunction
 
 
 class FrameModel(BaseModel):
@@ -100,20 +105,25 @@ class States(RootModel[Dict[str, StateModel]]):
         return state
 
 
+ActionValueType = Union[
+    None,
+    str,
+    int,
+    float,
+    bool,
+    "GetAttributeModel",
+    "FrameUrlModel",
+    "AuthTokenModel",
+    "EventDataModel",
+    "LogicalFunctionModel",
+    List,
+    Dict,
+]
+
+
 class SetAttributeBody(BaseModel):
     attribute: str
-    value: Union[
-        None,
-        str,
-        int,
-        float,
-        bool,
-        "GetAttributeModel",
-        "FrameUrlModel",
-        "AuthTokenModel",
-        List,
-        Dict,
-    ]
+    value: ActionValueType
     next: Optional[List[Dict[str, Any]]] = Field(
         default=None
     )  # Параметры действий, которые могут быть сложными
@@ -161,6 +171,10 @@ class SetAttributeActionModel(BaseModel):
         elif isinstance(body.value, AuthTokenModel):
             action_body["value"] = AuthTokenModel.from_dict(
                 body.value.model_dump())
+        elif isinstance(body.value, EventDataModel):
+            action_body["value"] = EventDataModel.from_dict(
+                body.value.model_dump())
+
         return action_body
 
 
@@ -343,7 +357,8 @@ class EventTransitionModel(BaseModel):
             BinaryOperationConditionModel,
         ]
     ]
-    actions: List[Dict[str, Any]] = Field(default_factory=list)
+    actions: Optional[List[Union[SetAttributeActionModel,
+                                 ShowMessageActionModel]]] = Field(default=None)
 
     @model_validator(mode="before")
     def parse_conditions(cls, values):
@@ -591,10 +606,33 @@ class AuthTokenModel(BaseModel):
         return AuthToken(name="auth_token", kwargs={})
 
 
+class EventDataModel(BaseModel):
+    event_data: List[str]
+
+    @classmethod
+    def from_dict(cls, function_dict: Union[Literal['event_data'], Dict[Literal['event_data'], Any]]):
+        if isinstance(function_dict, str):
+            EventData(name="event_data", kwargs={'key_path': []})
+        return EventData(name="event_data", kwargs={'key_path': function_dict.get('event_data', [])})
+
+
+class LogicalFunctionModel(RootModel[Dict[str, List[ActionValueType]]]):
+
+    @classmethod
+    def from_dict(cls, logical_function_dict: Dict[str, List[ActionValueType]]):
+        first_key = next(iter(logical_function_dict.keys()), None)
+
+        if first_key == 'and':
+            return AndFunction(name="and", )
+
+
+
 class EventModel(BaseModel):
     handler_component: Optional[str] = Field(default=None)
     handler_method: Optional[str] = Field(default=None)
     raise_on_missing: Optional[bool] = Field(default=False)
+    actions: Optional[List[Union[SetAttributeActionModel,
+                                 ShowMessageActionModel]]] = Field(default=None)
 
 
 class Events(RootModel[
