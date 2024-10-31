@@ -99,22 +99,7 @@ class ATController(ATComponent):
         checking_data = data
 
         if diagram_event:
-            if diagram_event.handler_component and diagram_event.handler_method:
-                if await self.check_external_registered(
-                    diagram_event.handler_component
-                ):
-                    checking_data = await self.exec_external_method(
-                        diagram_event.handler_component,
-                        diagram_event.handler_method,
-                        {"event": event, "data": data},
-                        auth_token=auth_token,
-                    )
-                else:
-                    msg = f"For event {event} handler component "
-                    msg += f"{diagram_event.handler_component} is not registered"
-                    if diagram_event.raise_on_missing:
-                        raise ReferenceError(msg)
-                    logger.warning(msg)
+            checking_data = await diagram_event.handle(event, process, frames, checking_data)
 
         for transition in process.diagram.get_state_exit_transitions(state):
             if (

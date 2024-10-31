@@ -1,3 +1,5 @@
+initial_attributes:
+  attempts: 0
 states:
 
   # состояния для технологии построения темпоральных БЗ
@@ -367,8 +369,6 @@ transitions:
       - set_attribute:
           attribute: test_status
           value:
-      - show_message:
-          message: "Управляющая программа зарегистрировала событи создания типа"
 
 events:
   kbTypes/create:
@@ -376,6 +376,15 @@ events:
     handler_method: handle_kb_type_created
     actions:
       - set_attribute:
+          attribute: attempts
+          value:
+            add:
+              left_value: 1
+              right_value:
+                state_attr: attempts
+          next:
+            - show_message:
+                message: "Управляющая программа зарегистрировала попытку создания типа №{attempts}"
 
   kbTypes/update:
     handler_component: ATTutotingSkills

@@ -16,6 +16,8 @@ from urllib.parse import parse_qs
 from urllib.parse import urlencode
 from urllib.parse import urlparse
 from urllib.parse import urlunparse
+from logging import getLogger
+logger = getLogger(__name__)
 
 import numpy as np
 
@@ -568,7 +570,7 @@ class Action:
     async def perform(self, state_machine: "StateMachine", frames: Dict[str, str]):
         result = await self.action(state_machine, frames)
         if self.next:
-            await asyncio.gather(*[next_action.perform() for next_action in self.next])
+            await asyncio.gather(*[next_action.perform(state_machine, frames) for next_action in self.next])
         return result
 
     async def action(self, state_machine: "StateMachine", frames: Dict[str, str]):
@@ -605,13 +607,16 @@ class ShowMessageAction(Action):
             'ATRenderer',
             'show_message',
             {
-                "message": self.message,
+                "message": self.format_message(state_machine),
                 "modal": self.modal,
                 "message_type": self.message_type,
                 "title": self.title,
             },
             auth_token=state_machine.auth_token
         )
+
+    def format_message(self, state_machine: "StateMachine"):
+        return self.message.format_map(state_machine.attributes)
 
 
 @dataclass(kw_only=True)
@@ -771,6 +776,33 @@ class OrFunction(Function):
         return any(*[f.exec(state_machine, frames, event_data, **kwargs) if isinstance(f, Function) else f for f in self.items])
 
 
+UnaryFuncType = Literal[
+    "len",
+    "sqrt",
+    "abs",
+    "ceil",
+    "floor",
+    "round",
+    "sign",
+    "log",
+    "exp",
+    "sin",
+    "cos",
+    "tan",
+    "asin",
+    "acos",
+    "atan",
+    "neg",
+    "transpose",
+    "det",
+    "inv",
+    "norm",
+    "trace",
+    "is_null",
+    "state_attr"
+]
+
+
 class UnaryFunctionKwargs(TypedDict):
     value: Union[str, int, float, bool, "Function", list, dict]
 
@@ -786,6 +818,8 @@ class UnaryFunction(Function):
 
     def exec(self, state_machine: "StateMachine", frames: Dict[str, str], event_data: Any = None, **kwargs):
         checking_value = self.value.exec(state_machine, frames, event_data, **kwargs) if isinstance(self.value, Function) else self.value
+        if self.name == 'state_attr':
+            return state_machine.attributes.get(checking_value)
         cond = NonArgOperationCondition(type=self.name)
         return cond.perform_operation(checking_value=checking_value, state_machine=state_machine)
 
@@ -795,9 +829,31 @@ class BinaryFunctionKwargs(TypedDict):
     right_value: Union[str, int, float, bool, "Function", list, dict]
 
 
+BinaryFuncType = Literal[
+    "add",
+    "sub",
+    "mul",
+    "div",
+    "mod",
+    "pow",
+    "logical_and",
+    "logical_or",
+    "xor",
+    "max",
+    "min",
+    "equal",
+    "not_equal",
+    "less_than",
+    "less_or_equal",
+    "greater_than",
+    "greater_or_equal",
+    "get_attr",
+    "has_attr"
+]
+
 @dataclass(kw_only=True)
 class BinaryFunction(Function):
-    name: BinaryType
+    name: BinaryFuncType
     kwargs: BinaryFunctionKwargs
 
     @property
@@ -821,6 +877,30 @@ class Event:
     handler_component: Optional[str] = field(default=None)
     handler_method: Optional[str] = field(default=None)
     raise_on_missing: Optional[bool] = field(default=False)
+    actions: Optional[List[Action]] = field(default=None)
+
+    async def handle(self, event: str, state_machine: "StateMachine", frames: Dict[str, str], event_data: Any = None, **kwargs):
+        checking_data = event_data
+        if self.handler_component and self.handler_method:
+            if await state_machine.component.check_external_registered(
+                self.handler_component
+            ):
+                checking_data = await state_machine.component.exec_external_method(
+                    self.handler_component,
+                    self.handler_method,
+                    {"event": event, "data": event_data},
+                    auth_token=state_machine.auth_token,
+                )
+            else:
+                msg = f"For event {event} handler component "
+                msg += f"{self.handler_component} is not registered"
+                if self.raise_on_missing:
+                    raise ReferenceError(msg)
+                logger.warning(msg)
+
+        await asyncio.gather(*[action.perform(state_machine, frames) for action in self.actions])
+        
+        return checking_data
 
 
 @dataclass(kw_only=True)
@@ -828,6 +908,7 @@ class Diagram:
     states: List[State]
     transitions: List[Transition]
     events: List[Event]
+    initial_attributes: Optional[Dict[str, Any]] = field(default_factory=dict)
 
     @property
     def annotation(self):

@@ -15,7 +15,7 @@ class SafeDict(dict):
 
 
 class StateMachine(object):
-    comaponent: ATComponent
+    component: ATComponent
     auth_token: str
     attributes: Dict[str, Any]
     diagram: "Diagram"
@@ -26,6 +26,7 @@ class StateMachine(object):
         self.attributes = SafeDict()
         self.attributes["auth_token"] = auth_token
         self.diagram = diagram
+        self.attributes.update(diagram.initial_attributes or {})
 
         self.translated_machine = GraphMachine(
             model=self, **diagram.annotation)
