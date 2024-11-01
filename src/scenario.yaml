@@ -131,7 +131,7 @@ states:
     control_subtitle: Построение типов ресурсов и их параметров
     initial: false
     frame_rows:
-      kb_editor:
+      sm_editor:
         src: http://45.148.245.134:5000/token?token={auth_token}&frame_id=sm_editor
         type: format_attributes
         redirect: /models/{selected_sm}/resource-types
@@ -353,6 +353,20 @@ transitions:
               parse:
                 regexp: .*/models/(\d+)/?
                 group: 0
+  all_types_created:
+    type: event
+    event: kbTypes/create
+    source: building_types
+    dest: building_basic_objects
+    trigger_condition:
+      state_attr:
+        argument: attempts
+        condition:
+          gt: 5
+    actions:
+      - show_message:
+          message: "Типов создано: {attempts}. Переход к этапу построения базовых объектов"
+
   on_type_created:
     type: event
     event: kbTypes/create
