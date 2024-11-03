@@ -4,6 +4,7 @@ import operator
 import re
 from dataclasses import dataclass
 from dataclasses import field
+from logging import getLogger
 from typing import Any
 from typing import Dict
 from typing import List
@@ -16,10 +17,10 @@ from urllib.parse import parse_qs
 from urllib.parse import urlencode
 from urllib.parse import urlparse
 from urllib.parse import urlunparse
-from logging import getLogger
-logger = getLogger(__name__)
 
 import numpy as np
+logger = getLogger(__name__)
+
 
 if TYPE_CHECKING:
     from at_controller.core.fsm import StateMachine
@@ -567,13 +568,13 @@ class Action:
     type: str
     next: Optional[List["Action"]] = field(default=None)
 
-    async def perform(self, state_machine: "StateMachine", frames: Dict[str, str]):
-        result = await self.action(state_machine, frames)
+    async def perform(self, state_machine: "StateMachine", frames: Dict[str, str], event_data=None):
+        result = await self.action(state_machine, frames, event_data=event_data)
         if self.next:
-            await asyncio.gather(*[next_action.perform(state_machine, frames) for next_action in self.next])
+            await asyncio.gather(*[next_action.perform(state_machine, frames, event_data=event_data) for next_action in self.next])
         return result
 
-    async def action(self, state_machine: "StateMachine", frames: Dict[str, str]):
+    async def action(self, state_machine: "StateMachine", frames: Dict[str, str], event_data=None):
         pass
 
 
@@ -583,10 +584,10 @@ class SetAttributeAction(Action):
     attribute: str
     value: Union[str, int, float, bool, "Function", list, dict]
 
-    async def action(self, state_machine: "StateMachine", frames: Dict[str, str]):
+    async def action(self, state_machine: "StateMachine", frames: Dict[str, str], event_data=None):
         value = self.value
         if isinstance(value, Function):
-            value = value.exec(state_machine, frames, **value.kwargs)
+            value = value.exec(state_machine, frames, event_data=event_data, **value.kwargs)
         state_machine.attributes[self.attribute] = value
 
         result = {}
@@ -602,7 +603,7 @@ class ShowMessageAction(Action):
     modal: Optional[bool] = field(default=True)
     message_type: Optional[str] = field(default="info")
 
-    async def action(self, state_machine: "StateMachine", frames: Dict[str, str]):
+    async def action(self, state_machine: "StateMachine", frames: Dict[str, str], event_data=None):
         return await state_machine.component.exec_external_method(
             'ATRenderer',
             'show_message',
@@ -817,7 +818,8 @@ class UnaryFunction(Function):
         return self.kwargs["value"]
 
     def exec(self, state_machine: "StateMachine", frames: Dict[str, str], event_data: Any = None, **kwargs):
-        checking_value = self.value.exec(state_machine, frames, event_data, **kwargs) if isinstance(self.value, Function) else self.value
+        checking_value = self.value.exec(state_machine, frames, event_data, **
+                                         kwargs) if isinstance(self.value, Function) else self.value
         if self.name == 'state_attr':
             return state_machine.attributes.get(checking_value)
         cond = NonArgOperationCondition(type=self.name)
@@ -851,6 +853,7 @@ BinaryFuncType = Literal[
     "has_attr"
 ]
 
+
 @dataclass(kw_only=True)
 class BinaryFunction(Function):
     name: BinaryFuncType
@@ -865,8 +868,10 @@ class BinaryFunction(Function):
         return self.kwargs["right_value"]
 
     def exec(self, state_machine: "StateMachine", frames: Dict[str, str], event_data: Any = None, **kwargs):
-        left_value = self.left_value.exec(state_machine, frames, event_data, **kwargs) if isinstance(self.left_value, Function) else self.left_value
-        right_value = self.right_value.exec(state_machine, frames, event_data, **kwargs) if isinstance(self.right_value, Function) else self.right_value
+        left_value = self.left_value.exec(state_machine, frames, event_data, **
+                                          kwargs) if isinstance(self.left_value, Function) else self.left_value
+        right_value = self.right_value.exec(state_machine, frames, event_data, **
+                                            kwargs) if isinstance(self.right_value, Function) else self.right_value
         cond = BinaryOperationCondition(type=self.name, argument=right_value)
         return cond.perform_operation(checking_value=left_value, state_machine=state_machine)
 
@@ -898,8 +903,8 @@ class Event:
                     raise ReferenceError(msg)
                 logger.warning(msg)
 
-        await asyncio.gather(*[action.perform(state_machine, frames) for action in self.actions])
-        
+        await asyncio.gather(*[action.perform(state_machine, frames, checking_data) for action in self.actions])
+
         return checking_data
 
 

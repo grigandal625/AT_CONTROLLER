@@ -59,7 +59,7 @@ class ATController(ATComponent):
 
     @authorized_method
     async def trigger_transition(
-        self, trigger: str, frames: dict, auth_token: str = None
+        self, trigger: str, frames: dict, event_data: dict = None, auth_token: str = None
     ) -> str:
         auth_token = auth_token or "default"
         process: StateMachine = self.state_machines.get(auth_token)
@@ -73,7 +73,7 @@ class ATController(ATComponent):
             t.name for t in process.diagram.get_state_exit_transitions(state)
         ]:
             if transition.actions:
-                await asyncio.gather(*[action.perform(process, frames) for action in transition.actions])
+                await asyncio.gather(*[action.perform(process, frames, event_data) for action in transition.actions])
 
             process.trigger(transition.name)
 
@@ -120,11 +120,11 @@ class ATController(ATComponent):
             if transition.trigger_condition:
                 if transition.trigger_condition.check(checking_data, process):
                     return await self.trigger_transition(
-                        transition.name, frames or {}, auth_token=auth_token
+                        transition.name, frames or {}, event_data=checking_data, auth_token=auth_token
                     )
             else:
                 return await self.trigger_transition(
-                    transition.name, frames or {}, auth_token=auth_token
+                    transition.name, frames or {}, event_data=checking_data, auth_token=auth_token
                 )
 
         return data

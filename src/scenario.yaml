@@ -353,6 +353,7 @@ transitions:
               parse:
                 regexp: .*/models/(\d+)/?
                 group: 0
+
   all_types_created:
     type: event
     event: kbTypes/create
@@ -360,46 +361,53 @@ transitions:
     dest: building_basic_objects
     trigger_condition:
       state_attr:
-        argument: attempts
+        argument: skills_result
         condition:
-          gt: 5
+          and:
+            - has_attr: stage_done
+            - get_attr: stage_done
     actions:
       - show_message:
-          message: "Типов создано: {attempts}. Переход к этапу построения базовых объектов"
+          message: "Компонент оценивания вернул возможность завершения этапа построения типов. Осуществлен переход к этапу построения базовых объектов"
 
-  on_type_created:
+  all_types_updated:
     type: event
-    event: kbTypes/create
+    event: kbTypes/update
     source: building_types
-    dest: building_types
+    dest: building_basic_objects
     trigger_condition:
-      and:
-        - has_attr: result
-        - get_attr:
-            argument: result
-            condition:
-              has_attr: item
+      state_attr:
+        argument: skills_result
+        condition:
+          and:
+            - has_attr: stage_done
+            - get_attr: stage_done
     actions:
-      - set_attribute:
-          attribute: test_status
-          value:
+      - show_message:
+          message: "Компонент оценивания вернул возможность завершения этапа построения типов. Осуществлен переход к этапу построения базовых объектов"
 
 events:
   kbTypes/create:
-    handler_component: ATTutotingSkills
+    handler_component: ATTutoringSkills
     handler_method: handle_kb_type_created
     actions:
       - set_attribute:
-          attribute: attempts
+          attribute: skills_result
           value:
-            add:
-              left_value: 1
-              right_value:
-                state_attr: attempts
+            event_data: []
           next:
             - show_message:
-                message: "Управляющая программа зарегистрировала попытку создания типа №{attempts}"
+                message: "Управляющая программа получила ответ от компонента оценивания:\n\n{skills_result}"
 
   kbTypes/update:
-    handler_component: ATTutotingSkills
+    handler_component: ATTutoringSkills
     handler_method: handle_kb_type_updated
+
+    actions:
+      - set_attribute:
+          attribute: skills_result
+          value:
+            event_data: []
+          next:
+            - show_message:
+                message: "Управляющая программа получила ответ от компонента оценивания:\n\n{skills_result}"
