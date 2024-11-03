@@ -29,8 +29,11 @@ class ATController(ATComponent):
         self.state_machines = {}
 
     async def perform_configurate(self, config: ATComponentConfig, auth_token: str = None, *args, **kwargs) -> bool:
-        scenarion_item = config.items.get('scenario')
-        diagram_dict = safe_load(scenarion_item.data)
+        scenario_item = config.items.get('scenario')
+        if isinstance(scenario_item.data, str):
+            diagram_dict = safe_load(scenario_item.data)
+        else:
+            diagram_dict = scenario_item.data
         diagram = DiagramModel.from_dict(diagram_dict)
         self.scenarios[auth_token] = diagram
         return True
