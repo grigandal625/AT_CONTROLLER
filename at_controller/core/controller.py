@@ -2,6 +2,7 @@ import asyncio
 from logging import getLogger
 from typing import Union
 
+from at_config.core.at_config_handler import ATComponentConfig
 from at_queue.core.at_component import ATComponent
 from at_queue.core.session import ConnectionParameters
 from at_queue.utils.decorators import authorized_method
@@ -19,23 +20,27 @@ logger = getLogger(__name__)
 
 class ATController(ATComponent):
     state_machines = None
-    scenario = None
+    scenarios = None
 
     def __init__(self, connection_parameters: ConnectionParameters, *args, **kwargs):
         super().__init__(connection_parameters=connection_parameters, *args, **kwargs)
-        with open("src/scenario.yaml", "r") as file:
-            diagram_dict = safe_load(file)
-            diagram = DiagramModel.from_dict(diagram_dict)
-            self.scenario = diagram
 
+        self.scenarios = {}
         self.state_machines = {}
+
+    async def perform_configurate(self, config: ATComponentConfig, auth_token: str = None, *args, **kwargs) -> bool:
+        scenarion_item = config.items.get('scenario')
+        diagram_dict = safe_load(scenarion_item.data)
+        diagram = DiagramModel.from_dict(diagram_dict)
+        self.scenarios[auth_token] = diagram
+        return True
 
     @authorized_method
     async def start_process(self, auth_token: str = None) -> str:
         auth_token = auth_token or "default"
 
         process = StateMachine(
-            self, auth_token=auth_token, diagram=self.scenario)
+            self, auth_token=auth_token, diagram=self.scenarios.get(auth_token, None))
         self.state_machines[auth_token] = process
 
         initial_state = process.diagram.get_state(process.state)
