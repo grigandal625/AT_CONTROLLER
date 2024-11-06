@@ -34,8 +34,6 @@ from at_controller.diagram.state import InclusionType
 from at_controller.diagram.state import LinkTransition
 from at_controller.diagram.state import NonArgOperationCondition
 from at_controller.diagram.state import NonArgType, UnaryFuncType
-from at_controller.diagram.state import NotCondition
-from at_controller.diagram.state import OrCondition
 from at_controller.diagram.state import OrFunction
 from at_controller.diagram.state import SetAttributeAction
 from at_controller.diagram.state import ShowMessageAction
