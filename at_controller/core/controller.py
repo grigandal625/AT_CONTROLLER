@@ -36,6 +36,7 @@ class ATController(ATComponent):
             diagram_dict = scenario_item.data
         diagram = DiagramModel.from_dict(diagram_dict)
         self.scenarios[auth_token] = diagram
+        self.start_process(auth_token=auth_token)
         return True
 
     @authorized_method
