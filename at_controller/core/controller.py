@@ -36,8 +36,16 @@ class ATController(ATComponent):
             diagram_dict = scenario_item.data
         diagram = DiagramModel.from_dict(diagram_dict)
         self.scenarios[auth_token] = diagram
-        self.start_process(auth_token=auth_token)
+        await self.start_process(auth_token=auth_token)
         return True
+
+    @authorized_method
+    async def reload_process(self, auth_token: str = None):
+        config = self._passed_configs.get(auth_token)
+        if not config:
+            raise ValueError("No configuration found for this auth token")
+        await self.perform_configurate(config, auth_token)
+        return self.state_machines[auth_token].state
 
     @authorized_method
     async def start_process(self, auth_token: str = None) -> str:
