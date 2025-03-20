@@ -10,7 +10,7 @@ from yaml import safe_load
 
 from at_controller.core.fsm import StateMachine
 from at_controller.diagram.models import DiagramModel
-from at_controller.diagram.state import EventTransition
+from at_controller.diagram.state.diagram import EventTransition
 
 # from at_controller.core.pages import PAGES
 # from at_controller.diagram.states import TRANSITIONS, STATES, get_triggering_transitions
@@ -29,7 +29,7 @@ class ATController(ATComponent):
         self.state_machines = {}
 
     async def perform_configurate(self, config: ATComponentConfig, auth_token: str = None, *args, **kwargs) -> bool:
-        scenario_item = config.items.get('scenario')
+        scenario_item = config.items.get("scenario")
         if isinstance(scenario_item.data, str):
             diagram_dict = safe_load(scenario_item.data)
         else:
@@ -51,8 +51,7 @@ class ATController(ATComponent):
     async def start_process(self, auth_token: str = None) -> str:
         auth_token = auth_token or "default"
 
-        process = StateMachine(
-            self, auth_token=auth_token, diagram=self.scenarios.get(auth_token, None))
+        process = StateMachine(self, auth_token=auth_token, diagram=self.scenarios.get(auth_token, None))
         self.state_machines[auth_token] = process
 
         initial_state = process.diagram.get_state(process.state)
@@ -78,9 +77,7 @@ class ATController(ATComponent):
 
         state = process.diagram.get_state(process.state)
         transition = process.diagram.get_transition(trigger)
-        if transition.name in [
-            t.name for t in process.diagram.get_state_exit_transitions(state)
-        ]:
+        if transition.name in [t.name for t in process.diagram.get_state_exit_transitions(state)]:
             if transition.actions:
                 await asyncio.gather(*[action.perform(process, frames, event_data) for action in transition.actions])
 
@@ -119,11 +116,7 @@ class ATController(ATComponent):
             checking_data = await diagram_event.handle(event, process, frames, checking_data)
 
         for transition in process.diagram.get_state_exit_transitions(state):
-            if (
-                not transition
-                or not isinstance(transition, EventTransition)
-                or transition.event != event
-            ):
+            if not transition or not isinstance(transition, EventTransition) or transition.event != event:
                 continue
 
             if transition.trigger_condition:

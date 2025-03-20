@@ -3,20 +3,41 @@ repos:
     rev: v5.0.0
     hooks:
     -   id: trailing-whitespace
+        exclude: at_krl/grammar/
     -   id: end-of-file-fixer
+        exclude: at_krl/grammar/
     -   id: check-yaml
+        exclude: at_krl/grammar/
     -   id: debug-statements
+        exclude: at_krl/grammar/
     -   id: requirements-txt-fixer
+        exclude: at_krl/grammar/
 -   repo: https://github.com/asottile/reorder_python_imports
     rev: v3.14.0
     hooks:
     -   id: reorder-python-imports
         args: [--py37-plus]
--   repo: https://github.com/pre-commit/mirrors-autopep8
-    rev: v2.0.4
+        exclude: at_krl/grammar/
+-   repo: https://github.com/psf/black
+    rev: 23.9.1
     hooks:
-    -   id: autopep8
+    -   id: black
+        exclude: at_krl/grammar/
+        args:
+          - --line-length=120
+-   repo: https://github.com/PyCQA/autoflake
+    rev: v2.3.1
+    hooks:
+    -   id: autoflake
+        args: [--remove-all-unused-imports, --in-place]
+        exclude: at_krl/grammar/
 -   repo: https://github.com/PyCQA/flake8
     rev: 7.1.1
     hooks:
     -   id: flake8
+        exclude: at_krl/grammar/
+        args:
+          - --max-line-length=120
+          - --extend-ignore=W503,E203
+        additional_dependencies:
+          - flake8-string-format

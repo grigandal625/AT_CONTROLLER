@@ -6,7 +6,7 @@ from at_queue.core.at_component import ATComponent
 from transitions.extensions import GraphMachine
 
 if TYPE_CHECKING:
-    from at_controller.diagram.state import Diagram
+    from at_controller.diagram.state.diagram import Diagram
 
 
 class SafeDict(dict):
@@ -20,7 +20,7 @@ class StateMachine(object):
     attributes: Dict[str, Any]
     diagram: "Diagram"
 
-    def __init__(self, component: 'ATComponent', auth_token: 'str', diagram: "Diagram"):
+    def __init__(self, component: "ATComponent", auth_token: "str", diagram: "Diagram"):
         self.component = component
         self.auth_token = auth_token
         self.attributes = SafeDict()
@@ -28,8 +28,7 @@ class StateMachine(object):
         self.diagram = diagram
         self.attributes.update(diagram.initial_attributes or {})
 
-        self.translated_machine = GraphMachine(
-            model=self, **diagram.annotation)
+        self.translated_machine = GraphMachine(model=self, **diagram.annotation)
 
 
 # Пример использования машины состояний и генерации диаграммы

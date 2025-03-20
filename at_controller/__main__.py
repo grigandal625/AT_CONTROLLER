@@ -11,10 +11,10 @@ async def main():
     connection_parameters = ConnectionParameters(**get_args())
 
     try:
-        if not os.path.exists('/var/run/at_controller/'):
-            os.makedirs('/var/run/at_controller/')
+        if not os.path.exists("/var/run/at_controller/"):
+            os.makedirs("/var/run/at_controller/")
 
-        with open('/var/run/at_controller/pidfile.pid', 'w') as f:
+        with open("/var/run/at_controller/pidfile.pid", "w") as f:
             f.write(str(os.getpid()))
     except PermissionError:
         pass

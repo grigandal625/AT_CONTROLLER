@@ -3,12 +3,8 @@ import argparse
 
 def get_args() -> dict:
     # Argument parser setup
-    parser = argparse.ArgumentParser(
-        prog="at-controller", description="AT-TECHNOLOGY state controller"
-    )
-    parser.add_argument(
-        "-u", "--url", help="RabbitMQ URL to connect", required=False, default=None
-    )
+    parser = argparse.ArgumentParser(prog="at-controller", description="AT-TECHNOLOGY state controller")
+    parser.add_argument("-u", "--url", help="RabbitMQ URL to connect", required=False, default=None)
     parser.add_argument(
         "-H",
         "--host",
@@ -16,9 +12,7 @@ def get_args() -> dict:
         required=False,
         default="localhost",
     )
-    parser.add_argument(
-        "-p", "--port", help="RabbitMQ port to connect", required=False, default=5672
-    )
+    parser.add_argument("-p", "--port", help="RabbitMQ port to connect", required=False, default=5672)
     parser.add_argument(
         "-L",
         "--login",

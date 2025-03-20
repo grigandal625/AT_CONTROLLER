@@ -13,34 +13,38 @@ from pydantic import RootModel
 from pydantic import ValidationError
 from yaml import safe_load
 
-from at_controller.diagram.state import AndCondition
-from at_controller.diagram.state import AndFunction
-from at_controller.diagram.state import AuthToken
-from at_controller.diagram.state import BinaryFunction
-from at_controller.diagram.state import BinaryOperationCondition
-from at_controller.diagram.state import BinaryType, BinaryFuncType
-from at_controller.diagram.state import Diagram
-from at_controller.diagram.state import EquatationCondition
-from at_controller.diagram.state import EquatationType
-from at_controller.diagram.state import Event
-from at_controller.diagram.state import EventData
-from at_controller.diagram.state import EventTransition
-from at_controller.diagram.state import Frame, FrameUrlArg
-from at_controller.diagram.state import FrameHandlerTransition
-from at_controller.diagram.state import FrameUrl
-from at_controller.diagram.state import GetAttribute
-from at_controller.diagram.state import InclusionCondition
-from at_controller.diagram.state import InclusionType
-from at_controller.diagram.state import LinkTransition
-from at_controller.diagram.state import NonArgOperationCondition
-from at_controller.diagram.state import NonArgType, UnaryFuncType
-from at_controller.diagram.state import NotCondition
-from at_controller.diagram.state import OrCondition
-from at_controller.diagram.state import OrFunction
-from at_controller.diagram.state import SetAttributeAction
-from at_controller.diagram.state import ShowMessageAction
-from at_controller.diagram.state import State
-from at_controller.diagram.state import UnaryFunction
+from at_controller.diagram.state.actions import ExecMethodAction
+from at_controller.diagram.state.actions import SetAttributeAction
+from at_controller.diagram.state.actions import ShowMessageAction
+from at_controller.diagram.state.conditions import AndCondition
+from at_controller.diagram.state.conditions import BinaryOperationCondition
+from at_controller.diagram.state.conditions import BinaryType
+from at_controller.diagram.state.conditions import EquatationCondition
+from at_controller.diagram.state.conditions import EquatationType
+from at_controller.diagram.state.conditions import InclusionCondition
+from at_controller.diagram.state.conditions import InclusionType
+from at_controller.diagram.state.conditions import NonArgOperationCondition
+from at_controller.diagram.state.conditions import NonArgType
+from at_controller.diagram.state.conditions import NotCondition
+from at_controller.diagram.state.conditions import OrCondition
+from at_controller.diagram.state.diagram import Diagram
+from at_controller.diagram.state.events import Event
+from at_controller.diagram.state.functions import AndFunction
+from at_controller.diagram.state.functions import AuthToken
+from at_controller.diagram.state.functions import BinaryFunction
+from at_controller.diagram.state.functions import BinaryFuncType
+from at_controller.diagram.state.functions import EventData
+from at_controller.diagram.state.functions import FrameUrl
+from at_controller.diagram.state.functions import FrameUrlArg
+from at_controller.diagram.state.functions import GetAttribute
+from at_controller.diagram.state.functions import OrFunction
+from at_controller.diagram.state.functions import UnaryFunction
+from at_controller.diagram.state.functions import UnaryFuncType
+from at_controller.diagram.state.states import Frame
+from at_controller.diagram.state.states import State
+from at_controller.diagram.state.transitions import EventTransition
+from at_controller.diagram.state.transitions import FrameHandlerTransition
+from at_controller.diagram.state.transitions import LinkTransition
 
 
 class FrameModel(BaseModel):
@@ -48,30 +52,23 @@ class FrameModel(BaseModel):
     redirect: Optional[str] = Field(default=None)
     redirect_param: Optional[str] = Field(default="to")
     frame_id_param: Optional[str] = Field(default="frame_id")
-    type: Optional[str] = Field(default="basic")
+    type: Literal["basic", "format_attributes"] = Field(default="basic")
     span: Optional[Union[int, str]] = Field(default="auto")
 
-    @field_validator("type")
-    def validate_type(cls, value):
-        if value not in ["basic", "format_attributes"]:
-            raise ValueError("Invalid frame type")
-        return value
+    def to_internal(self, **kwargs):
+        data = self.model_dump()
+        data.update(kwargs)
+        return Frame(**data)
 
 
 class FrameRowModel(RootModel[Dict[str, Union[str, FrameModel]]]):
-    @classmethod
-    def from_dict(cls, frame_row_dict: Dict[str, Any]):
-        frame_row = FrameRowModel(**frame_row_dict)
-        return [
-            Frame(frame_id=frame_id, **cls._build_frame(frame_data).model_dump())
-            for frame_id, frame_data in frame_row.root.items()
-        ]
-
-    @staticmethod
-    def _build_frame(frame: Union[FrameModel, str]):
-        if isinstance(frame, str):
-            return FrameModel(src=frame)
-        return frame
+    def to_internal(self, **kwargs):
+        result = []
+        for key, value in self.root.items():
+            if isinstance(value, str):
+                value = FrameModel(src=value)
+            result.append(value.to_internal(frame_id=key))
+        return result
 
 
 # Определяем модели для State
@@ -83,26 +80,22 @@ class StateModel(BaseModel):
     translation: Optional[str] = Field(default=None)
     initial: Optional[bool] = Field(default=False)
 
+    def to_internal(self, **kwargs):
+        data = self.model_dump()
+        data.update(kwargs)
+        if isinstance(self.frame_rows, FrameRowModel):
+            data["frame_rows"] = [self.frame_rows.to_internal()]
+        else:
+            data["frame_rows"] = [row.to_internal() for row in self.frame_rows]
+        return State(**data)
+
 
 class States(RootModel[Dict[str, StateModel]]):
-    @classmethod
-    def from_dict(cls, states_dict: Dict[str, Any]):
-        states = cls(states_dict)
-        return [
-            State(name=name, **cls._build_frame_rows(state.model_dump()))
-            for name, state in states.root.items()
-        ]
-
-    @staticmethod
-    def _build_frame_rows(state: Dict):
-        state_model = StateModel(**state)
-        frame_rows = state_model.frame_rows
-        if isinstance(frame_rows, FrameRowModel):
-            frame_rows = [frame_rows]
-        state["frame_rows"] = [
-            FrameRowModel.from_dict(frame_row.model_dump()) for frame_row in frame_rows
-        ]
-        return state
+    def to_internal(self, **kwargs):
+        result = []
+        for key, value in self.root.items():
+            result.append(value.to_internal(name=key))
+        return result
 
 
 ActionValueType = Union[
@@ -151,7 +144,7 @@ class ShowMessageActionModel(BaseModel):
         nxt = []
         if body.next:
             for i, n in enumerate(body.next):
-                nxt.append(n.from_dict(action_dict['set_attribute']['next'][i]))
+                nxt.append(n.from_dict(action_dict["set_attribute"]["next"][i]))
 
         return ShowMessageAction(
             type="show_message",
@@ -159,8 +152,9 @@ class ShowMessageActionModel(BaseModel):
             message=body.message,
             message_type=body.message_type,
             title=body.title,
-            modal=body.modal
+            modal=body.modal,
         )
+
 
 class SimpleSetAttributeBody(RootModel[Dict[str, ActionValueType]]):
     pass
@@ -171,28 +165,24 @@ class SetAttributeActionModel(BaseModel):
 
     @classmethod
     def from_dict(cls, action_dict: Dict[str, Any]):
-
         set_attribute = cls(**action_dict)
-        
+
         body = set_attribute.set_attribute
 
         if isinstance(body, SimpleSetAttributeBody):
             attribute = next(iter(body.root.keys()))
             value = next(iter(body.root.values()))
             return SetAttributeAction(
-                type="set_attribute", 
-                **cls._build_functions({'attribute': attribute, 'value': value})
+                type="set_attribute", **cls._build_functions({"attribute": attribute, "value": value})
             )
-        
+
         nxt = []
         if body.next:
             for i, n in enumerate(body.next):
-                nxt.append(n.from_dict(action_dict['set_attribute']['next'][i]))
+                nxt.append(n.from_dict(action_dict["set_attribute"]["next"][i]))
 
         return SetAttributeAction(
-            type="set_attribute",
-            **cls._build_functions({'value': body.value, 'attribute': body.attribute}),
-            next=nxt
+            type="set_attribute", **cls._build_functions({"value": body.value, "attribute": body.attribute}), next=nxt
         )
 
     @staticmethod
@@ -203,11 +193,25 @@ class SetAttributeActionModel(BaseModel):
         return action_body
 
 
+class ExecMethodActionModel(BaseModel):
+    component: str
+    method: str
+    method_args: ActionValueType
+    auth_token: Optional[str] = Field(default=None)
+
+    @classmethod
+    def from_dict(cls, action_dict: Dict[str, Any]):
+        if internable(action_dict["method_args"]):
+            action_dict["method_args"] = action_dict["method_args"].to_internal()
+        return ExecMethodAction(**action_dict)
+
+
 class TransitionModel(BaseModel):
     source: str
     dest: str
-    actions: Optional[List[Union[SetAttributeActionModel,
-                                 ShowMessageActionModel]]] = Field(default=None)
+    actions: Optional[List[Union[SetAttributeActionModel, ShowMessageActionModel, ExecMethodActionModel]]] = Field(
+        default=None
+    )
     translation: Optional[str] = Field(default=None)
 
 
@@ -221,8 +225,7 @@ class LinkTransitionModel(TransitionModel):
     @field_validator("position")
     def validate_position(cls, v):
         if v not in {"header", "footer", "control", None}:
-            raise ValueError(
-                "position must be 'header', 'footer', 'control', or None")
+            raise ValueError("position must be 'header', 'footer', 'control', or None")
         return v
 
 
@@ -265,9 +268,7 @@ class AndConditionModel(BaseModel):
     ]
 
     def to_internal(self) -> "AndCondition":
-        return AndCondition(
-            type="and", arguments=[cond.to_internal() for cond in self.conditions]
-        )
+        return AndCondition(type="and", arguments=[cond.to_internal() for cond in self.conditions])
 
 
 class OrConditionModel(BaseModel):
@@ -285,9 +286,7 @@ class OrConditionModel(BaseModel):
     ]
 
     def to_internal(self) -> "OrCondition":
-        return OrCondition(
-            type="or", arguments=[cond.to_internal() for cond in self.conditions]
-        )
+        return OrCondition(type="or", arguments=[cond.to_internal() for cond in self.conditions])
 
 
 class NotConditionModel(BaseModel):
@@ -322,9 +321,7 @@ class NonArgOperationConditionModel(BaseModel):
     @model_validator(mode="before")
     def parse_conditions(cls, values):
         if isinstance(values, dict):
-            values["condition"] = EventTransitionModel.parse_condition(
-                values.get("condition", {})
-            )
+            values["condition"] = EventTransitionModel.parse_condition(values.get("condition", {}))
         return values
 
     def to_internal(self) -> "NonArgOperationCondition":
@@ -352,9 +349,7 @@ class BinaryOperationConditionModel(BaseModel):
     @model_validator(mode="before")
     def parse_conditions(cls, values):
         if isinstance(values, dict):
-            values["condition"] = EventTransitionModel.parse_condition(
-                values.get("condition", {})
-            )
+            values["condition"] = EventTransitionModel.parse_condition(values.get("condition", {}))
         return values
 
     def to_internal(self) -> "BinaryOperationCondition":
@@ -382,8 +377,7 @@ class EventTransitionModel(BaseModel):
             BinaryOperationConditionModel,
         ]
     ]
-    actions: Optional[List[Union[SetAttributeActionModel,
-                                 ShowMessageActionModel]]] = Field(default=None)
+    actions: Optional[List[Union[SetAttributeActionModel, ShowMessageActionModel]]] = Field(default=None)
 
     @model_validator(mode="before")
     def parse_conditions(cls, values):
@@ -395,7 +389,9 @@ class EventTransitionModel(BaseModel):
         return values
 
     @classmethod
-    def parse_condition(cls, data: Dict[str, Any]) -> Union[
+    def parse_condition(
+        cls, data: Dict[str, Any]
+    ) -> Union[
         EquatationConditionModel,
         InclusionConditionModel,
         AndConditionModel,
@@ -425,9 +421,7 @@ class EventTransitionModel(BaseModel):
                     condition = cond_body or {}
             else:
                 condition = {}
-            return NonArgOperationConditionModel(
-                type=cond_type, condition=cls.parse_condition(condition)
-            )
+            return NonArgOperationConditionModel(type=cond_type, condition=cls.parse_condition(condition))
         elif cond_type in BinaryType.__args__:
             cond_body = data.get(cond_type)
             if isinstance(cond_body, dict):
@@ -470,9 +464,7 @@ class Transitions(
     RootModel[
         Dict[
             str,
-            Union[
-                LinkTransitionModel, FrameHandlerTransitionModel, EventTransitionModel
-            ],
+            Union[LinkTransitionModel, FrameHandlerTransitionModel, EventTransitionModel],
         ]
     ]
 ):
@@ -482,13 +474,10 @@ class Transitions(
         return [
             (
                 LinkTransition(name=name, **cls._build_actions(transition))
-                if isinstance(transition, LinkTransitionModel)
-                and transition.type == "link"
+                if isinstance(transition, LinkTransitionModel) and transition.type == "link"
                 else (
-                    FrameHandlerTransition(
-                        name=name, **cls._build_actions(transition))
-                    if isinstance(transition, FrameHandlerTransitionModel)
-                    and transition.type == "frame_handler"
+                    FrameHandlerTransition(name=name, **cls._build_actions(transition))
+                    if isinstance(transition, FrameHandlerTransitionModel) and transition.type == "frame_handler"
                     else EventTransition(name=name, **cls._build_actions(transition))
                 )
             )
@@ -496,21 +485,18 @@ class Transitions(
         ]
 
     @staticmethod
-    def _build_actions(
-        transition: Union[
-            LinkTransitionModel, FrameHandlerTransitionModel, EventTransitionModel
-        ]
-    ):
+    def _build_actions(transition: Union[LinkTransitionModel, FrameHandlerTransitionModel, EventTransitionModel]):
         transition_body = transition.model_dump()
         if isinstance(transition, EventTransitionModel):
-            transition_body["trigger_condition"] = (
-                transition.trigger_condition.to_internal()
-            )
+            transition_body["trigger_condition"] = transition.trigger_condition.to_internal()
         return {
             **transition_body,
             "actions": [
-                SetAttributeActionModel.from_dict(action_body) if next(
-                    iter(action_body.keys())) == "set_attribute" else ShowMessageActionModel.from_dict(action_body)
+                SetAttributeActionModel.from_dict(action_body)
+                if next(iter(action_body.keys())) == "set_attribute"
+                else ShowMessageActionModel.from_dict(action_body)
+                if next(iter(action_body.keys())) == "show_message"
+                else ExecMethodActionModel.from_dict(action_body)
                 for action_body in transition_body.get("actions", [])
             ],
         }
@@ -530,20 +516,12 @@ class GetAttributeModel(BaseModel):
     @staticmethod
     def _build_kwargs(function_dict):
         if isinstance(function_dict["get_attribute"], str):
-            return {
-                "kwargs": GetAttributeBodyModel(
-                    attribute=function_dict["get_attribute"]
-                ).model_dump()
-            }
-        return {
-            "kwargs": GetAttributeBodyModel(
-                **function_dict["get_attribute"]
-            ).model_dump()
-        }
+            return {"kwargs": GetAttributeBodyModel(attribute=function_dict["get_attribute"]).model_dump()}
+        return {"kwargs": GetAttributeBodyModel(**function_dict["get_attribute"]).model_dump()}
 
     def to_internal(self):
         if isinstance(self.get_attribute, str):
-            return GetAttribute(name="get_attribute", kwargs={'attribute': self.get_attribute})
+            return GetAttribute(name="get_attribute", kwargs={"attribute": self.get_attribute})
         if isinstance(self.get_attribute, GetAttributeBodyModel):
             return GetAttribute(name="get_attribute", kwargs=self.get_attribute.model_dump())
 
@@ -566,7 +544,7 @@ class FrameUrlParseBody(FrameUrlBodyModel):
     def to_internal(self):
         result = super().to_internal()
         if isinstance(self.parse, str):
-            result.update({'parse': {'regexp': self.parse}})
+            result.update({"parse": {"regexp": self.parse}})
         return result
 
 
@@ -580,8 +558,8 @@ class FrameUrlQueryBody(FrameUrlBodyModel):
 
     def to_internal(self):
         result = super().to_internal()
-        if isinstance(self.parse, str):
-            result.update({'query_param': {'param': self.query_param}})
+        if isinstance(self.query_param, str):
+            result.update({"query_param": {"param": self.query_param}})
         return result
 
 
@@ -595,28 +573,21 @@ class FrameUrlModel(BaseModel):
     @staticmethod
     def _build_kwargs(function_dict):
         if isinstance(function_dict["frame_url"], str):
-            return {
-                "kwargs": FrameUrlBodyModel(
-                    frame_id=function_dict["frame_url"]
-                ).model_dump()
-            }
+            return {"kwargs": FrameUrlBodyModel(frame_id=function_dict["frame_url"]).model_dump()}
 
         if "parse" in function_dict["frame_url"]:
             if isinstance(function_dict["frame_url"]["parse"], str):
                 return {
                     "kwargs": FrameUrlParseBody(
                         frame_id=function_dict["frame_url"]["frame_id"],
-                        parse=ParseBodyModel(
-                            regexp=function_dict["frame_url"]["parse"]
-                        ),
+                        parse=ParseBodyModel(regexp=function_dict["frame_url"]["parse"]),
                     ).model_dump()
                 }
 
             return {
                 "kwargs": FrameUrlParseBody(
                     frame_id=function_dict["frame_url"]["frame_id"],
-                    parse=ParseBodyModel(
-                        **function_dict["frame_url"]["parse"]),
+                    parse=ParseBodyModel(**function_dict["frame_url"]["parse"]),
                 ).model_dump()
             }
 
@@ -625,18 +596,14 @@ class FrameUrlModel(BaseModel):
                 return {
                     "kwargs": FrameUrlQueryBody(
                         frame_id=function_dict["frame_url"]["frame_id"],
-                        query_param=QueryBodyModel(
-                            param=function_dict["frame_url"]["query_param"]
-                        ).model_dump(),
+                        query_param=QueryBodyModel(param=function_dict["frame_url"]["query_param"]).model_dump(),
                     )
                 }
 
             return {
                 "kwargs": FrameUrlQueryBody(
                     frame_id=function_dict["frame_url"]["frame_id"],
-                    query_param=QueryBodyModel(
-                        **function_dict["frame_url"]["query_param"]
-                    ),
+                    query_param=QueryBodyModel(**function_dict["frame_url"]["query_param"]),
                 ).model_dump()
             }
 
@@ -666,22 +633,21 @@ class EventDataModel(BaseModel):
     event_data: List[str]
 
     @classmethod
-    def from_dict(cls, function_dict: Union[Literal['event_data'], Dict[Literal['event_data'], Any]]):
+    def from_dict(cls, function_dict: Union[Literal["event_data"], Dict[Literal["event_data"], Any]]):
         if isinstance(function_dict, str):
-            EventData(name="event_data", kwargs={'key_path': []})
-        return EventData(name="event_data", kwargs={'key_path': function_dict.get('event_data', [])})
+            EventData(name="event_data", kwargs={"key_path": []})
+        return EventData(name="event_data", kwargs={"key_path": function_dict.get("event_data", [])})
 
     def to_internal(self):
-        return EventData(name="event_data", kwargs={'key_path': self.event_data})
+        return EventData(name="event_data", kwargs={"key_path": self.event_data})
 
 
 class LogicalFunctionModel(RootModel[Dict[str, List[ActionValueType]]]):
-
     @model_validator(mode="before")
     def check_key(cls, values):
         if isinstance(values, dict):
             first_key = next(iter(values.keys()), None)
-            if first_key not in ['and', 'or']:
+            if first_key not in ["and", "or"]:
                 raise ValueError(f'Key must be "and" or "or" but got "{first_key}"')
         return values
 
@@ -690,24 +656,23 @@ class LogicalFunctionModel(RootModel[Dict[str, List[ActionValueType]]]):
         first_key = next(iter(logical_function_dict.keys()), None)
         data = cls(logical_function_dict)
 
-        items = [SetAttributeActionModel._build_functions({'value': {k: v}})['value'] for k, v in data.root.items()]
+        items = [SetAttributeActionModel._build_functions({"value": {k: v}})["value"] for k, v in data.root.items()]
 
-        if first_key == 'and':
-            return AndFunction(name="and", kwargs={'items': items})
-        if first_key == 'or':
-            return OrFunction(name="or", kwargs={'items': items})
+        if first_key == "and":
+            return AndFunction(name="and", kwargs={"items": items})
+        if first_key == "or":
+            return OrFunction(name="or", kwargs={"items": items})
 
     def to_internal(self):
         first_key = next(iter(self.root.keys()), None)
-        FunctionClass = {'and': AndFunction, 'or': OrFunction}[first_key]
+        FunctionClass = {"and": AndFunction, "or": OrFunction}[first_key]
 
-        return FunctionClass(name=first_key, kwargs={'items': [
-            v.to_internal() if internable(v) else v for v in self.root[first_key]
-        ]})
+        return FunctionClass(
+            name=first_key, kwargs={"items": [v.to_internal() if internable(v) else v for v in self.root[first_key]]}
+        )
 
 
 class UnaryFunctionModel(RootModel[Dict[str, ActionValueType]]):
-    
     @model_validator(mode="before")
     def check_key(cls, values):
         if isinstance(values, dict):
@@ -721,15 +686,20 @@ class UnaryFunctionModel(RootModel[Dict[str, ActionValueType]]):
         first_key = next(iter(unary_function_dict.keys()), None)
         data = cls(unary_function_dict)
 
-        kwargs = SetAttributeActionModel._build_functions({'value': data.root})
+        kwargs = SetAttributeActionModel._build_functions({"value": data.root})
 
         return UnaryFunction(name=first_key, kwargs=kwargs)
 
     def to_internal(self):
         first_key = next(iter(self.root.keys()), None)
-        return UnaryFunction(name=first_key, kwargs={
-            'value': self.root[first_key].to_internal() if internable(self.root[first_key]) else self.root[first_key]
-        })
+        return UnaryFunction(
+            name=first_key,
+            kwargs={
+                "value": self.root[first_key].to_internal()
+                if internable(self.root[first_key])
+                else self.root[first_key]
+            },
+        )
 
 
 class BinaryFunctionBody(BaseModel):
@@ -738,7 +708,6 @@ class BinaryFunctionBody(BaseModel):
 
 
 class BinaryFunctionModel(RootModel[Dict[str, BinaryFunctionBody]]):
-
     @model_validator(mode="before")
     def check_key(cls, values):
         if isinstance(values, dict):
@@ -752,33 +721,34 @@ class BinaryFunctionModel(RootModel[Dict[str, BinaryFunctionBody]]):
         first_key = next(iter(binary_function_dict.keys()), None)
         data = cls(binary_function_dict)
 
-        left_value = SetAttributeActionModel._build_functions({'value': data.root[first_key]['left_value']})['value']
-        right_value = SetAttributeActionModel._build_functions({'value': data.root[first_key]['right_value']})['value']
+        left_value = SetAttributeActionModel._build_functions({"value": data.root[first_key]["left_value"]})["value"]
+        right_value = SetAttributeActionModel._build_functions({"value": data.root[first_key]["right_value"]})["value"]
 
-        return BinaryFunction(name=first_key, kwargs={'left_value': left_value, 'right_value': right_value})
+        return BinaryFunction(name=first_key, kwargs={"left_value": left_value, "right_value": right_value})
 
     def to_internal(self):
         first_key = next(iter(self.root.keys()), None)
-        return BinaryFunction(name=first_key, kwargs={
-            'left_value': self.root[first_key].left_value.to_internal() if internable(self.root[first_key].left_value) else self.root[first_key].left_value,
-            'right_value': self.root[first_key].right_value.to_internal() if internable(self.root[first_key].right_value) else self.root[first_key].right_value,
-        })
+        return BinaryFunction(
+            name=first_key,
+            kwargs={
+                "left_value": self.root[first_key].left_value.to_internal()
+                if internable(self.root[first_key].left_value)
+                else self.root[first_key].left_value,
+                "right_value": self.root[first_key].right_value.to_internal()
+                if internable(self.root[first_key].right_value)
+                else self.root[first_key].right_value,
+            },
+        )
 
 
 class EventModel(BaseModel):
     handler_component: Optional[str] = Field(default=None)
     handler_method: Optional[str] = Field(default=None)
     raise_on_missing: Optional[bool] = Field(default=False)
-    actions: Optional[List[Union[SetAttributeActionModel,
-                                 ShowMessageActionModel]]] = Field(default=None)
+    actions: Optional[List[Union[SetAttributeActionModel, ShowMessageActionModel]]] = Field(default=None)
 
 
-class Events(RootModel[
-    Dict[
-        str,
-        EventModel
-    ]
-]):
+class Events(RootModel[Dict[str, EventModel]]):
     @classmethod
     def from_dict(cls, events_dict: Dict[str, Any]):
         events = cls(events_dict)
@@ -787,29 +757,30 @@ class Events(RootModel[
                 name=name,
                 handler_component=event.handler_component,
                 handler_method=event.handler_method,
-                actions=[
-                    a.from_dict(events_dict[name]['actions'][i]) 
-                    for i, a in enumerate(event.actions or [])
-                ]
+                actions=[a.from_dict(events_dict[name]["actions"][i]) for i, a in enumerate(event.actions or [])],
             )
             for name, event in events.root.items()
         ]
+
 
 class InitialAttributesModel(RootModel[Dict[str, Any]]):
     pass
 
 
 INTERNABLE_FUNCTIONS = [
-    GetAttributeModel, 
-    FrameUrlModel, 
-    AuthTokenModel, 
-    EventDataModel, 
-    LogicalFunctionModel, 
+    GetAttributeModel,
+    FrameUrlModel,
+    AuthTokenModel,
+    EventDataModel,
+    LogicalFunctionModel,
     UnaryFunctionModel,
     BinaryFunctionModel,
 ]
 
-internable = lambda f: any([isinstance(f, c) for c in INTERNABLE_FUNCTIONS])
+
+def internable(f):
+    return any([isinstance(f, c) for c in INTERNABLE_FUNCTIONS])
+
 
 class DiagramModel(BaseModel):
     states: States
