@@ -23,7 +23,7 @@ class Condition:
     type: str
 
     def check(self, checking_value: Any, state_machine: "StateMachine", *args, **kwargs):
-        raise NotImplementedError
+        raise NotImplementedError("Not implemented")
 
 
 EquatationType = Literal["eq", "ne", "gt", "gte", "lt", "lte"]
@@ -71,17 +71,7 @@ class InclusionCondition(Condition):
 @dataclass(kw_only=True)
 class AndCondition(Condition):
     type: Literal["and"]
-    arguments: List[
-        Union[
-            EquatationCondition,
-            InclusionCondition,
-            "AndCondition",
-            "OrCondition",
-            "NotCondition",
-            "NonArgOperationCondition",
-            "BinaryOperationCondition",
-        ]
-    ]
+    arguments: List["AllConditionsType"]
 
     def check(self, checking_value: Any, state_machine: "StateMachine", *args, **kwargs):
         return all(condition.check(checking_value, state_machine) for condition in self.arguments)
@@ -90,17 +80,7 @@ class AndCondition(Condition):
 @dataclass(kw_only=True)
 class OrCondition(Condition):
     type: Literal["or"]
-    arguments: List[
-        Union[
-            EquatationCondition,
-            InclusionCondition,
-            AndCondition,
-            "OrCondition",
-            "NotCondition",
-            "NonArgOperationCondition",
-            "BinaryOperationCondition",
-        ]
-    ]
+    arguments: List["AllConditionsType"]
 
     def check(self, checking_value: Any, state_machine: "StateMachine", *args, **kwargs):
         return any(condition.check(checking_value, state_machine) for condition in self.arguments)
@@ -109,15 +89,7 @@ class OrCondition(Condition):
 @dataclass(kw_only=True)
 class NotCondition(Condition):
     type: Literal["not"]
-    condition: Union[
-        EquatationCondition,
-        InclusionCondition,
-        AndCondition,
-        OrCondition,
-        "NotCondition",
-        "NonArgOperationCondition",
-        "BinaryOperationCondition",
-    ]
+    condition: Union["AllConditionsType"]
 
     def check(self, checking_value: Any, state_machine: "StateMachine", *args, **kwargs):
         return not self.condition.check(checking_value, state_machine)
@@ -126,17 +98,7 @@ class NotCondition(Condition):
 @dataclass(kw_only=True)
 class OperationCondition(Condition):
     type: str
-    condition: Optional[
-        Union[
-            EquatationCondition,
-            InclusionCondition,
-            AndCondition,
-            OrCondition,
-            "NotCondition",
-            "NonArgOperationCondition",
-            "BinaryOperationCondition",
-        ]
-    ] = field(default=None)
+    condition: Optional["AllConditionsType"] = field(default=None)
 
     def perform_operation(self, checking_value, state_machine: "StateMachine", *args, **kwargs):
         pass
@@ -299,3 +261,14 @@ class BinaryOperationCondition(OperationCondition):
             return self.argument in checking_value
         else:
             raise ValueError(f"Unsupported operation type: {self.type}")
+
+
+AllConditionsType = Union[
+    EquatationCondition,
+    InclusionCondition,
+    AndCondition,
+    OrCondition,
+    NotCondition,
+    NonArgOperationCondition,
+    BinaryOperationCondition,
+]

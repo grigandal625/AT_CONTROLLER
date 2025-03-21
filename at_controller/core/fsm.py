@@ -29,9 +29,3 @@ class StateMachine(object):
         self.attributes.update(diagram.initial_attributes or {})
 
         self.translated_machine = GraphMachine(model=self, **diagram.annotation)
-
-
-# Пример использования машины состояний и генерации диаграммы
-if __name__ == "__main__":
-    process = StateMachine()
-    print(process.state)

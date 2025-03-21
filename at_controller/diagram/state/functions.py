@@ -15,7 +15,6 @@ from urllib.parse import urlparse
 
 from at_controller.diagram.state.conditions import BinaryOperationCondition
 from at_controller.diagram.state.conditions import NonArgOperationCondition
-from at_controller.diagram.state.conditions import NonArgType
 
 
 if TYPE_CHECKING:
@@ -115,13 +114,13 @@ class FrameUrl(Function):
             query_string = urlparse(url).query
             query_params = parse_qs(query_string)
             if "index" in kwargs["query_params"]:
+                index = kwargs["query_params"]["index"] or 0
                 return query_params.get(
                     kwargs["query_params"]["param"],
-                    [None] * (kwargs["query_params"]["index"] + 1),
-                )[kwargs["query_params"]["index"]]
+                    [None] * (index + 1),
+                )[index]
             else:
                 return query_params.get(kwargs["query_params"], [None])[0]
-
         return url
 
 
@@ -173,9 +172,7 @@ class AndFunction(Function):
         return self.kwargs["items"]
 
     def exec(self, state_machine: "StateMachine", frames: Dict[str, str], event_data: Any = None, **kwargs):
-        return all(
-            *[f.exec(state_machine, frames, event_data, **kwargs) if isinstance(f, Function) else f for f in self.items]
-        )
+        return all(*[f.call(state_machine, frames, event_data) if isinstance(f, Function) else f for f in self.items])
 
 
 @dataclass(kw_only=True)
@@ -188,9 +185,7 @@ class OrFunction(Function):
         return self.kwargs["items"]
 
     def exec(self, state_machine: "StateMachine", frames: Dict[str, str], event_data: Any = None, **kwargs):
-        return any(
-            *[f.exec(state_machine, frames, event_data, **kwargs) if isinstance(f, Function) else f for f in self.items]
-        )
+        return any(*[f.call(state_machine, frames, event_data) if isinstance(f, Function) else f for f in self.items])
 
 
 UnaryFuncType = Literal[
@@ -217,6 +212,7 @@ UnaryFuncType = Literal[
     "trace",
     "is_null",
     "state_attr",
+    "not",
 ]
 
 
@@ -226,7 +222,7 @@ class UnaryFunctionKwargs(TypedDict):
 
 @dataclass(kw_only=True)
 class UnaryFunction(Function):
-    name: NonArgType
+    name: UnaryFuncType
     kwargs: UnaryFunctionKwargs
 
     @property
@@ -235,10 +231,10 @@ class UnaryFunction(Function):
 
     def exec(self, state_machine: "StateMachine", frames: Dict[str, str], event_data: Any = None, **kwargs):
         checking_value = (
-            self.value.exec(state_machine, frames, event_data, **kwargs)
-            if isinstance(self.value, Function)
-            else self.value
+            self.value.call(state_machine, frames, event_data) if isinstance(self.value, Function) else self.value
         )
+        if self.name == "not":
+            return not checking_value
         if self.name == "state_attr":
             return state_machine.attributes.get(checking_value)
         cond = NonArgOperationCondition(type=self.name)
@@ -288,12 +284,12 @@ class BinaryFunction(Function):
 
     def exec(self, state_machine: "StateMachine", frames: Dict[str, str], event_data: Any = None, **kwargs):
         left_value = (
-            self.left_value.exec(state_machine, frames, event_data, **kwargs)
+            self.left_value.call(state_machine, frames, event_data)
             if isinstance(self.left_value, Function)
             else self.left_value
         )
         right_value = (
-            self.right_value.exec(state_machine, frames, event_data, **kwargs)
+            self.right_value.call(state_machine, frames, event_data)
             if isinstance(self.right_value, Function)
             else self.right_value
         )

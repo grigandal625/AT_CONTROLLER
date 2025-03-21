@@ -9,11 +9,9 @@ from at_queue.utils.decorators import authorized_method
 from yaml import safe_load
 
 from at_controller.core.fsm import StateMachine
-from at_controller.diagram.models import DiagramModel
-from at_controller.diagram.state.diagram import EventTransition
+from at_controller.diagram.models.diagram import DiagramModel
+from at_controller.diagram.state.transitions import EventTransition
 
-# from at_controller.core.pages import PAGES
-# from at_controller.diagram.states import TRANSITIONS, STATES, get_triggering_transitions
 
 logger = getLogger(__name__)
 
@@ -34,8 +32,12 @@ class ATController(ATComponent):
             diagram_dict = safe_load(scenario_item.data)
         else:
             diagram_dict = scenario_item.data
-        diagram = DiagramModel.from_dict(diagram_dict)
-        self.scenarios[auth_token] = diagram
+        diagram_model = DiagramModel(**diagram_dict)
+        diagram = diagram_model.to_internal()
+
+        auth_token_or_user_id = await self.get_user_id_or_token(auth_token, raize_on_failed=False)
+        self.scenarios[auth_token_or_user_id] = diagram
+
         await self.start_process(auth_token=auth_token)
         return True
 
@@ -45,14 +47,17 @@ class ATController(ATComponent):
         if not config:
             raise ValueError("No configuration found for this auth token")
         await self.perform_configurate(config, auth_token)
-        return self.state_machines[auth_token].state
+        auth_token_or_user_id = await self.get_user_id_or_token(auth_token, raize_on_failed=False)
+        return self.state_machines[auth_token_or_user_id].state
 
     @authorized_method
     async def start_process(self, auth_token: str = None) -> str:
         auth_token = auth_token or "default"
 
-        process = StateMachine(self, auth_token=auth_token, diagram=self.scenarios.get(auth_token, None))
-        self.state_machines[auth_token] = process
+        auth_token_or_user_id = await self.get_user_id_or_token(auth_token, raize_on_failed=False)
+
+        process = StateMachine(self, auth_token=auth_token, diagram=self.scenarios.get(auth_token_or_user_id, None))
+        self.state_machines[auth_token_or_user_id] = process
 
         initial_state = process.diagram.get_state(process.state)
 
@@ -70,7 +75,8 @@ class ATController(ATComponent):
         self, trigger: str, frames: dict, event_data: dict = None, auth_token: str = None
     ) -> str:
         auth_token = auth_token or "default"
-        process: StateMachine = self.state_machines.get(auth_token)
+        auth_token_or_user_id = await self.get_user_id_or_token(auth_token, raize_on_failed=False)
+        process: StateMachine = self.state_machines.get(auth_token_or_user_id)
 
         if not process:
             return "No process found for this auth token"
@@ -102,7 +108,8 @@ class ATController(ATComponent):
         auth_token: str = None,
     ):
         auth_token = auth_token or "default"
-        process: StateMachine = self.state_machines.get(auth_token)
+        auth_token_or_user_id = await self.get_user_id_or_token(auth_token, raize_on_failed=False)
+        process: StateMachine = self.state_machines.get(auth_token_or_user_id)
 
         if not process:
             return "No process found for this auth token"
