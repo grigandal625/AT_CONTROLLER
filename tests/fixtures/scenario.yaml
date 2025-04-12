@@ -1,5 +1,10 @@
 initial_attributes:
   attempts: 0
+  kb_editor_port:
+    env: KB_EDITOR_PORT
+    default: 2222
+  sm_editor_port:
+    env: SM_EDITOR_PORT
 states:
 
   # состояния для технологии построения темпоральных БЗ
