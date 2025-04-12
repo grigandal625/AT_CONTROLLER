@@ -12,7 +12,7 @@ def get_args() -> dict:
         required=False,
         default="localhost",
     )
-    parser.add_argument("-p", "--port", help="RabbitMQ port to connect", required=False, default=5672)
+    parser.add_argument("-p", "--port", type=int, help="RabbitMQ port to connect", required=False, default=5672)
     parser.add_argument(
         "-L",
         "--login",
