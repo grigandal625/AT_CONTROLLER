@@ -1,10 +1,13 @@
 import asyncio
+import logging
 import os
 
 from at_queue.core.session import ConnectionParameters
 
 from at_controller.core.arguments import get_args
 from at_controller.core.controller import ATController
+
+logging.basicConfig(level=logging.INFO)
 
 
 async def main():

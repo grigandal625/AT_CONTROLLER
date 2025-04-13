@@ -43,11 +43,11 @@ class ATController(ATComponent):
 
     @authorized_method
     async def reload_process(self, auth_token: str = None):
-        config = self._passed_configs.get(auth_token)
+        auth_token_or_user_id = await self.get_user_id_or_token(auth_token, raize_on_failed=False)
+        config = self._passed_configs.get(auth_token_or_user_id)
         if not config:
             raise ValueError("No configuration found for this auth token")
         await self.perform_configurate(config, auth_token)
-        auth_token_or_user_id = await self.get_user_id_or_token(auth_token, raize_on_failed=False)
         return self.state_machines[auth_token_or_user_id].state
 
     @authorized_method
