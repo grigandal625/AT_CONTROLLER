@@ -12,7 +12,6 @@ from at_controller.core.fsm import StateMachine
 from at_controller.diagram.models.diagram import DiagramModel
 from at_controller.diagram.state.transitions import EventTransition
 
-
 logger = getLogger(__name__)
 
 
@@ -125,15 +124,12 @@ class ATController(ATComponent):
         for transition in process.diagram.get_state_exit_transitions(state):
             if not transition or not isinstance(transition, EventTransition) or transition.event != event:
                 continue
+            
+            if transition.trigger_condition and not transition.trigger_condition.check(checking_data, process):
+                continue
 
-            if transition.trigger_condition:
-                if transition.trigger_condition.check(checking_data, process):
-                    return await self.trigger_transition(
-                        transition.name, frames or {}, event_data=checking_data, auth_token=auth_token
-                    )
-            else:
-                return await self.trigger_transition(
+            return await self.trigger_transition(
                     transition.name, frames or {}, event_data=checking_data, auth_token=auth_token
                 )
-
+            
         return data
