@@ -128,6 +128,9 @@ class ATController(ATComponent):
             if transition.trigger_condition and not transition.trigger_condition.check(checking_data, process):
                 continue
 
+            logger.info("Triggering transition: state=%s, transition=%s, event=%s",
+                state, transition.name, event)
+            
             return await self.trigger_transition(
                     transition.name, frames or {}, event_data=checking_data, auth_token=auth_token
                 )
