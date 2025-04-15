@@ -9,7 +9,7 @@ from pydantic import Field
 from pydantic import RootModel
 
 from at_controller.diagram.models.actions import AllActionModels
-from at_controller.diagram.models.conditions import AllConditionModels
+from at_controller.diagram.models.functions import ActionValueType
 from at_controller.diagram.state.transitions import EventTransition
 from at_controller.diagram.state.transitions import FrameHandlerTransition
 from at_controller.diagram.state.transitions import LinkTransition
@@ -58,7 +58,7 @@ class EventTransitionModel(TransitionModel):
     type: Literal["event"] = "event"
     source: str
     dest: str
-    trigger_condition: Optional[AllConditionModels] = Field(default=None)
+    trigger_condition: Optional[ActionValueType] = Field(default=None)
 
     def get_data(self):
         data = super().get_data()

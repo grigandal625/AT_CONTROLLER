@@ -365,12 +365,13 @@ transitions:
     source: building_types
     dest: building_basic_objects
     trigger_condition:
-      state_attr:
-        argument: skills_result
-        condition:
-          and:
-            - has_attr: stage_done
-            - get_attr: stage_done
+      and:
+        - has_attr:
+            left_value: { get_attribute: skills_result }
+            right_value: stage_done
+        - get_attr:
+            left_value: { get_attribute: skills_result }
+            right_value: stage_done
     actions:
       - show_message:
           message: "Компонент оценивания вернул возможность завершения этапа построения типов. Осуществлен переход к этапу построения базовых объектов"
@@ -381,12 +382,13 @@ transitions:
     source: building_types
     dest: building_basic_objects
     trigger_condition:
-      state_attr:
-        argument: skills_result
-        condition:
-          and:
-            - has_attr: stage_done
-            - get_attr: stage_done
+      and:
+        - has_attr:
+            left_value: { get_attribute: skills_result }
+            right_value: stage_done
+        - get_attr:
+            left_value: { get_attribute: skills_result }
+            right_value: stage_done
     actions:
       - show_message:
           message: "Компонент оценивания вернул возможность завершения этапа построения типов. Осуществлен переход к этапу построения базовых объектов"

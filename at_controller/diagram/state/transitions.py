@@ -7,11 +7,7 @@ from typing import Optional
 from typing import TYPE_CHECKING
 from typing import Union
 
-from at_controller.diagram.state.conditions import AndCondition
-from at_controller.diagram.state.conditions import EquatationCondition
-from at_controller.diagram.state.conditions import InclusionCondition
-from at_controller.diagram.state.conditions import NotCondition
-from at_controller.diagram.state.conditions import OrCondition
+from at_controller.diagram.state.functions import Function
 from at_controller.diagram.state.states import State
 
 
@@ -69,15 +65,7 @@ class EventTransition(Transition):
     name: str
     event: Optional[str] = field(default=None)
 
-    trigger_condition: Optional[
-        Union[
-            EquatationCondition,
-            InclusionCondition,
-            AndCondition,
-            OrCondition,
-            NotCondition,
-        ]
-    ] = field(default=None)
+    trigger_condition: Optional[Union[str, int, float, bool, "Function", list, dict]] = field(default=None)
 
     actions: List["Action"] = field(default=None)
     type: Literal["internal_event"] = field(default="event")

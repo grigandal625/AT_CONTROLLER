@@ -18,6 +18,7 @@ from at_controller.diagram.state.functions import EventData
 from at_controller.diagram.state.functions import FrameUrl
 from at_controller.diagram.state.functions import FrameUrlArg
 from at_controller.diagram.state.functions import GetAttribute
+from at_controller.diagram.state.functions import InitialEventData
 from at_controller.diagram.state.functions import OrFunction
 from at_controller.diagram.state.functions import UnaryFunction
 from at_controller.diagram.state.functions import UnaryFuncType
@@ -160,6 +161,24 @@ class EventDataModel(RootModel[Union[Literal["$event_data"], EventDataInternalMo
         return self.root.to_internal()
 
 
+class InitialEventDataInternalModel(FunctionModel):
+    initial_event_data: Union[List[Union[str, int, float]], Literal["$"]]
+
+    def to_internal(self):
+        return InitialEventData(
+            name="initial_event_data", kwargs={"key_path": self.event_data if isinstance(self.event_data, list) else []}
+        )
+
+
+class InitialEventDataModel(
+    RootModel[Union[Literal["$initial_event_data"], InitialEventDataInternalModel]], FunctionModel
+):
+    def to_internal(self):
+        if isinstance(self.root, str):
+            return InitialEventData(name="initial_event_data", kwargs={"key_path": []})
+        return self.root.to_internal()
+
+
 class LogicalFunctionModel(RootModel[Dict[Literal["and", "or"], List["ActionValueType"]]], FunctionModel):
     @model_validator(mode="before")
     def check_key(cls, values):
@@ -244,6 +263,7 @@ ExplicitFunctionModels = Union[
     FrameUrlModel,
     AuthTokenModel,
     EventDataModel,
+    InitialEventDataModel,
     LogicalFunctionModel,
     UnaryFunctionModel,
     BinaryFunctionModel,
@@ -259,6 +279,7 @@ GetAttributeModel.model_rebuild()
 FrameUrlModel.model_rebuild()
 AuthTokenModel.model_rebuild()
 EventDataModel.model_rebuild()
+InitialEventDataModel.model_rebuild()
 LogicalFunctionModel.model_rebuild()
 UnaryFunctionModel.model_rebuild()
 BinaryFunctionModel.model_rebuild()

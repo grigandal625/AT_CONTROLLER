@@ -89,7 +89,7 @@ class OrCondition(Condition):
 @dataclass(kw_only=True)
 class NotCondition(Condition):
     type: Literal["not"]
-    condition: Union["AllConditionsType"]
+    condition: "AllConditionsType"
 
     def check(self, checking_value: Any, state_machine: "StateMachine", *args, **kwargs):
         return not self.condition.check(checking_value, state_machine)

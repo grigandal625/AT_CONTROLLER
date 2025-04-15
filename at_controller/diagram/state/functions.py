@@ -56,8 +56,12 @@ class Function:
             ]
         return value
 
-    def call(self, state_machine: "StateMachine", frames: Dict[str, str], event_data=None):
-        kwargs = self._search_and_call_functions(self.kwargs, state_machine, frames, event_data=event_data)
+    def call(
+        self, state_machine: "StateMachine", frames: Dict[str, str], event_data=None, initial_event_data: Any = None
+    ):
+        kwargs = self._search_and_call_functions(
+            self.kwargs, state_machine, frames, event_data=event_data, initial_event_data=initial_event_data
+        )
         return self.exec(state_machine, frames, event_data=event_data, **kwargs)
 
     def exec(self, state_machine: "StateMachine", frames: Dict[str, str], event_data: Any = None, **kwargs):
@@ -73,7 +77,14 @@ class GetAttribute(Function):
     name: Literal["get_attribute"] = field(default="get_attribute")
     kwargs: AttributeArg
 
-    def exec(self, state_machine: "StateMachine", frames: Dict[str, str], event_data: Any = None, **kwargs):
+    def exec(
+        self,
+        state_machine: "StateMachine",
+        frames: Dict[str, str],
+        event_data: Any = None,
+        initial_event_data: Any = None,
+        **kwargs
+    ):
         return state_machine.attributes.get(kwargs["attribute"])
 
 
@@ -98,7 +109,14 @@ class FrameUrl(Function):
     name: Literal["frame_url"]
     kwargs: FrameUrlArg
 
-    def exec(self, state_machine: "StateMachine", frames: Dict[str, str], event_data: Any = None, **kwargs):
+    def exec(
+        self,
+        state_machine: "StateMachine",
+        frames: Dict[str, str],
+        event_data: Any = None,
+        initial_event_data: Any = None,
+        **kwargs
+    ):
         frame_id = kwargs["frame_id"]
         url = frames.get(frame_id)
 
@@ -129,7 +147,14 @@ class AuthToken(Function):
     name: Literal["auth_token"]
     kwargs: Dict
 
-    def exec(self, state_machine: "StateMachine", frames: Dict[str, str], event_data: Any = None, **kwargs):
+    def exec(
+        self,
+        state_machine: "StateMachine",
+        frames: Dict[str, str],
+        event_data: Any = None,
+        initial_event_data: Any = None,
+        **kwargs
+    ):
         return state_machine.auth_token
 
 
@@ -142,7 +167,14 @@ class EventData(Function):
     name: Literal["event_data"]
     kwargs: EventDataKwargs
 
-    def exec(self, state_machine: "StateMachine", frames: Dict[str, str], event_data: Any = None, **kwargs):
+    def exec(
+        self,
+        state_machine: "StateMachine",
+        frames: Dict[str, str],
+        event_data: Any = None,
+        initial_event_data: Any = None,
+        **kwargs
+    ):
         if self.kwargs and self.kwargs.get("key_path"):
             return self.extract(event_data, self.kwargs["key_path"])
         return event_data
@@ -158,6 +190,24 @@ class EventData(Function):
         return None
 
 
+@dataclass(kw_only=True)
+class InitialEventData(Function):
+    name: Literal["initial_event_data"]
+    kwargs: EventDataKwargs
+
+    def exec(
+        self,
+        state_machine: "StateMachine",
+        frames: Dict[str, str],
+        event_data: Any = None,
+        initial_event_data: Any = None,
+        **kwargs
+    ):
+        if self.kwargs and self.kwargs.get("key_path"):
+            return EventData.extract(initial_event_data, self.kwargs["key_path"])
+        return initial_event_data
+
+
 class LogicalFunctionKwargs(TypedDict):
     items: List[Union[str, int, float, bool, "Function", list, dict]]
 
@@ -171,7 +221,14 @@ class AndFunction(Function):
     def items(self):
         return self.kwargs["items"]
 
-    def exec(self, state_machine: "StateMachine", frames: Dict[str, str], event_data: Any = None, **kwargs):
+    def exec(
+        self,
+        state_machine: "StateMachine",
+        frames: Dict[str, str],
+        event_data: Any = None,
+        initial_event_data: Any = None,
+        **kwargs
+    ):
         return all(*[f.call(state_machine, frames, event_data) if isinstance(f, Function) else f for f in self.items])
 
 
@@ -184,7 +241,14 @@ class OrFunction(Function):
     def items(self):
         return self.kwargs["items"]
 
-    def exec(self, state_machine: "StateMachine", frames: Dict[str, str], event_data: Any = None, **kwargs):
+    def exec(
+        self,
+        state_machine: "StateMachine",
+        frames: Dict[str, str],
+        event_data: Any = None,
+        initial_event_data: Any = None,
+        **kwargs
+    ):
         return any(*[f.call(state_machine, frames, event_data) if isinstance(f, Function) else f for f in self.items])
 
 
@@ -229,7 +293,14 @@ class UnaryFunction(Function):
     def value(self):
         return self.kwargs["value"]
 
-    def exec(self, state_machine: "StateMachine", frames: Dict[str, str], event_data: Any = None, **kwargs):
+    def exec(
+        self,
+        state_machine: "StateMachine",
+        frames: Dict[str, str],
+        event_data: Any = None,
+        initial_event_data: Any = None,
+        **kwargs
+    ):
         checking_value = (
             self.value.call(state_machine, frames, event_data) if isinstance(self.value, Function) else self.value
         )
@@ -282,7 +353,14 @@ class BinaryFunction(Function):
     def right_value(self):
         return self.kwargs["right_value"]
 
-    def exec(self, state_machine: "StateMachine", frames: Dict[str, str], event_data: Any = None, **kwargs):
+    def exec(
+        self,
+        state_machine: "StateMachine",
+        frames: Dict[str, str],
+        event_data: Any = None,
+        initial_event_data: Any = None,
+        **kwargs
+    ):
         left_value = (
             self.left_value.call(state_machine, frames, event_data)
             if isinstance(self.left_value, Function)
