@@ -85,7 +85,7 @@ class GetAttribute(Function):
         initial_event_data: Any = None,
         **kwargs
     ):
-        return state_machine.attributes.get(kwargs["attribute"])
+        return state_machine.attributes.get(self.kwargs["attribute"])
 
 
 class UrlRegexpSub(TypedDict):
@@ -217,6 +217,9 @@ class AndFunction(Function):
     name: Literal["and"]
     kwargs: LogicalFunctionKwargs
 
+    def call(self, state_machine, frames, event_data=None, initial_event_data=None):
+        self.exec(state_machine, frames, event_data, initial_event_data)
+
     @property
     def items(self):
         return self.kwargs["items"]
@@ -229,7 +232,16 @@ class AndFunction(Function):
         initial_event_data: Any = None,
         **kwargs
     ):
-        return all(*[f.call(state_machine, frames, event_data) if isinstance(f, Function) else f for f in self.items])
+        result = True
+        for f in self.items:
+            result = (
+                result and f.call(state_machine, frames, event_data, initial_event_data=initial_event_data)
+                if isinstance(f, Function)
+                else f
+            )
+            if not result:
+                return result
+        return result
 
 
 @dataclass(kw_only=True)
@@ -249,7 +261,16 @@ class OrFunction(Function):
         initial_event_data: Any = None,
         **kwargs
     ):
-        return any(*[f.call(state_machine, frames, event_data) if isinstance(f, Function) else f for f in self.items])
+        result = False
+        for f in self.items:
+            result = (
+                result or f.call(state_machine, frames, event_data, initial_event_data=initial_event_data)
+                if isinstance(f, Function)
+                else f
+            )
+            if result:
+                return result
+        return result
 
 
 UnaryFuncType = Literal[
