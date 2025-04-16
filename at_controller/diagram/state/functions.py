@@ -218,7 +218,7 @@ class AndFunction(Function):
     kwargs: LogicalFunctionKwargs
 
     def call(self, state_machine, frames, event_data=None, initial_event_data=None):
-        self.exec(state_machine, frames, event_data, initial_event_data)
+        return self.exec(state_machine, frames, event_data, initial_event_data)
 
     @property
     def items(self):
@@ -234,11 +234,8 @@ class AndFunction(Function):
     ):
         result = True
         for f in self.items:
-            result = (
-                result and f.call(state_machine, frames, event_data, initial_event_data=initial_event_data)
-                if isinstance(f, Function)
-                else f
-            )
+            new_result = f.call(state_machine, frames, event_data, initial_event_data=initial_event_data) if isinstance(f, Function) else f
+            result = result and new_result
             if not result:
                 return result
         return result
@@ -248,6 +245,9 @@ class AndFunction(Function):
 class OrFunction(Function):
     name: Literal["or"]
     kwargs: LogicalFunctionKwargs
+
+    def call(self, state_machine, frames, event_data=None, initial_event_data=None):
+        return self.exec(state_machine, frames, event_data, initial_event_data)
 
     @property
     def items(self):
@@ -263,11 +263,8 @@ class OrFunction(Function):
     ):
         result = False
         for f in self.items:
-            result = (
-                result or f.call(state_machine, frames, event_data, initial_event_data=initial_event_data)
-                if isinstance(f, Function)
-                else f
-            )
+            new_result = f.call(state_machine, frames, event_data, initial_event_data=initial_event_data) if isinstance(f, Function) else f
+            result = result or new_result
             if result:
                 return result
         return result

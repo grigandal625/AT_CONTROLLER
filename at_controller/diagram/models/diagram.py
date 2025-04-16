@@ -12,6 +12,9 @@ from at_controller.diagram.models.events import Events
 from at_controller.diagram.models.states import States
 from at_controller.diagram.models.transitions import Transitions
 from at_controller.diagram.state.diagram import Diagram
+import dotenv
+
+dotenv.load_dotenv()
 
 
 class EnvInitialAttributeModel(BaseModel):
