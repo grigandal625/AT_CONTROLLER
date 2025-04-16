@@ -31,12 +31,15 @@ class Event:
         checking_data = event_data
         if self.handler_component and self.handler_method:
             if await state_machine.component.check_external_registered(self.handler_component):
-                checking_data = await state_machine.component.exec_external_method(
-                    self.handler_component,
-                    self.handler_method,
-                    {"event": event, "data": event_data},
-                    auth_token=state_machine.auth_token,
-                )
+                try:
+                    checking_data = await state_machine.component.exec_external_method(
+                        self.handler_component,
+                        self.handler_method,
+                        {"event": event, "data": event_data},
+                        auth_token=state_machine.auth_token,
+                    )
+                except Exception as e:
+                    logger.error(e)
             else:
                 msg = f"For event {event} handler component "
                 msg += f"{self.handler_component} is not registered"
@@ -44,6 +47,7 @@ class Event:
                     raise ReferenceError(msg)
                 logger.warning(msg)
 
-        await asyncio.gather(*[action.perform(state_machine, frames, checking_data) for action in self.actions])
+        if self.actions:
+            await asyncio.gather(*[action.perform(state_machine, frames, checking_data) for action in self.actions])
 
         return checking_data

@@ -17,7 +17,7 @@ class FrameModel(BaseModel):
     redirect: Optional[str] = Field(default=None)
     redirect_param: Optional[str] = Field(default="to")
     frame_id_param: Optional[str] = Field(default="frame_id")
-    type: Literal["basic", "format_attributes"] = Field(default="basic")
+    type: Literal["basic", "format_attributes", "docs"] = Field(default="basic")
     span: Optional[Union[int, str]] = Field(default="auto")
 
     def to_internal(self, **kwargs):

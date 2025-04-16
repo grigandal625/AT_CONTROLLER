@@ -7,6 +7,7 @@ from typing import Optional
 from typing import TYPE_CHECKING
 from typing import Union
 from urllib.parse import parse_qs
+from urllib.parse import quote_plus
 from urllib.parse import urlencode
 from urllib.parse import urlparse
 from urllib.parse import urlunparse
@@ -26,12 +27,12 @@ class Frame:
     redirect: Optional[str] = field(default=None)
     redirect_param: Optional[str] = field(default="to")
     frame_id_param: Optional[str] = field(default="frame_id")
-    type: Literal["basic", "format_attributes"] = field(default="basic")
+    type: Literal["basic", "format_attributes", "docs"] = field(default="basic")
     span: Optional[Union[int, str]] = field(default="auto")
 
     def format_src(self, state_machine: "StateMachine"):
-        if self.type == "format_attributes":
-            return self.src.format_map(state_machine.attributes)
+        if self.type == "format_attributes" or self.type == "docs":
+            return self.src.format(**state_machine.attributes)
         return self.src
 
     def format_redirect(self, state_machine: "StateMachine"):
@@ -40,6 +41,12 @@ class Frame:
         return self.redirect
 
     def get_src(self, state_machine: "StateMachine"):
+        if self.type == "docs":
+            src = "/docview?asFrame=true&viewing=true&docs="
+            docs = self.format_src(state_machine)
+            formatted_docs = quote_plus(docs)
+            src += formatted_docs
+            return src
         src = self.format_src(state_machine)
         if self.redirect is not None:
             redirect = self.format_redirect(state_machine)
