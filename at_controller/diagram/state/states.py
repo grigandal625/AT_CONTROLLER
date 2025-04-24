@@ -1,3 +1,4 @@
+import base64
 from dataclasses import dataclass
 from dataclasses import field
 from logging import getLogger
@@ -7,7 +8,6 @@ from typing import Optional
 from typing import TYPE_CHECKING
 from typing import Union
 from urllib.parse import parse_qs
-from urllib.parse import quote_plus
 from urllib.parse import urlencode
 from urllib.parse import urlparse
 from urllib.parse import urlunparse
@@ -44,7 +44,9 @@ class Frame:
         if self.type == "docs":
             src = "/docview?asFrame=true&viewing=true&docs="
             docs = self.format_src(state_machine)
-            formatted_docs = quote_plus(docs)
+            bytes_docs = docs.encode("utf-8")
+            base64_bytes = base64.b64encode(bytes_docs)
+            formatted_docs = base64_bytes.decode("utf-8")
             src += formatted_docs
             return src
         src = self.format_src(state_machine)
