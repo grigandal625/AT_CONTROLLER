@@ -46,7 +46,7 @@ class Frame:
             docs = self.format_src(state_machine)
             bytes_docs = docs.encode("utf-8")
             base64_bytes = base64.b64encode(bytes_docs)
-            formatted_docs = base64_bytes.decode("utf-8")
+            formatted_docs = base64_bytes.decode("ascii")
             src += formatted_docs
             return src
         src = self.format_src(state_machine)
